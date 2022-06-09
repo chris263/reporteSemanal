@@ -20,7 +20,7 @@ for (package in packages_used){
   if (!(package %in% ip[,"Package"])) install.packages(package)
 }#END packages_used
 
-here::i_am("../analysis/reporteSemanal.Rmd")
+here::i_am("analysis/reporteSemanal.Rmd")
 
 ```
 
@@ -51,7 +51,7 @@ rawPheno6 <- read.csv("../data/TPP09_csv_06062022.csv", header=T, sep=",")
 tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR"),
                           nome=c("cornStunt", "manchaFoliar", "turcicum", "manchaBranca"))
 
-selTrait <- tableTraits$nome[1]
+selTrait <- tableTraits$nome[2]
 
 filterTrait <- tableTraits %>% filter(nome %in% selTrait)
 
@@ -112,7 +112,8 @@ myDF6 <- data.frame(local=as.character(rawPheno6$PSS.EXT.EXTID),genotipo=as.char
 
 # Combinando os arquivos
 
-allData <- rbind(myDF1,myDF2,myDF3,myDF4,myDF5, myDF6) # Conjunta
+# allData <- rbind(myDF1,myDF2,myDF3,myDF4,myDF5, myDF6) # Conjunta
+allData <- rbind(myDF1, myDF2, myDF3)
 
 ## Filtrar por TPP
 myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
@@ -143,6 +144,7 @@ qControl <- 0.2 #trashold
 
 
 ## Controle de qualidade
+Aqui acontece ...
 
 ```{r controle, echo=FALSE, warning=FALSE}
 ## Agora nao precisa mais fazer alteracoes
@@ -210,7 +212,7 @@ for(i in 1:length(tableTraits$codigo)){
 tableTraits[nrow(tableTraits)+1,] <- c("Total","Total",sum(tableTraits$dataPoints),
                                        sum(tableTraits$BU),sum(tableTraits$experimentos))
 
-knitr::kable(tableTraits)
+# knitr::kable(tableTraits)
 
 ```
 
@@ -285,7 +287,7 @@ dfLocal <- entradasLoc$local
 
 
 ## Classificando os locais:
-
+aqui tambem acontecem coisas...
 
 ```{r classLoc, include=TRUE, warning=FALSE}
 # Rodar lme4 para BLUE e Herdabilidade para cada local
@@ -316,6 +318,7 @@ knitr::kable(finalTabela2)
 
 
 ## Graficos por local
+os graficos por local mostram as pressoes de doencas separando dois grupos, o primeiro com MS e MT, enquanto que o segunto possui S e T. 
 
 ```{r graficos, echo=FALSE, warning=FALSE}
 
@@ -338,7 +341,7 @@ for(i in 1:length(unique(finalTabela2$Local))){
 
 
 # locais
-
+Resumo dos locais
 ```{r tabelaLoc, echo=FALSE}
 
 # 
@@ -359,7 +362,7 @@ modelo1 <- joint_blup(altaPP, "no") # yes = local efeito fixo, no = local nao en
 
 # finalBLUP <- calc_blups(modelo1,"no") # yes = yield e nota juntos. no = apenas nota
 
-finalTabela2$classe[finalTabela2$Local%in%novoLoc] <- "Alta"
+# finalTabela2$classe[finalTabela2$Local%in%novoLoc] <- "Alta"
 
 DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
 
@@ -373,6 +376,11 @@ DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
 
 
 ```
+
+## Medias
+
+Aqui acontece o calculo de medias.
+
 
 ```{r heatmap, echo=F, warning=FALSE}
 
