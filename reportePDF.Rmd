@@ -1,0 +1,173 @@
+---
+title: "reportPDF"
+author: "Chris Simoes"
+date: "5/17/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r uploading, include=FALSE, warning=FALSE}
+set.seed(12345)
+library(dplyr)
+
+# Codigos auxiliares
+source("code/parseCS.R")
+source("code/acuraciaCS.R")
+source("code/selectionIndex.R")
+source("code/graficos.R")
+
+
+rawPheno <- readxl::read_xlsx("data/TPP11.xlsx", sheet="SINGLE OBS DATA")
+checksCS <- readxl::read_xlsx("data/suporteMilho.xlsx", sheet="Checks")
+checksCS$Esperado <- as.numeric(checksCS$Esperado)
+sinN <- readxl::read_xlsx("data/suporteMilho.xlsx", sheet="Sinonimos")
+colnames(sinN) <- c("genotipo","Novo")
+
+#Analisar yiedl junto?
+duasT <- "no"
+
+#limites
+limiteAlta <- 2 #Desvio a partir de 2 passa a ser alta
+limiteBaixa <- -1 #Desvio entre -1 e 2 é media pressao
+
+# quality control
+qControl <- 0.3 #trashold
+
+```
+
+## Visualizando os dados
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+
+myDF <- data.frame(as.character(rawPheno$`PSS:EXT:EXTID`),as.character(rawPheno$ABBRC),
+                   as.numeric(rawPheno$`PSS:REPNO`),as.numeric(rawPheno$`PSS:COSTR`),
+                   as.numeric(rawPheno$VCRD), as.numeric(rawPheno$HCRD))
+
+colnames(myDF) <- c("local","genotipo","rep","Nota","range","row")
+
+# Padronizando nomes
+# Removendo espaços
+myDF$genotipo <- gsub(" ", "", myDF$genotipo, fixed = TRUE)
+myDF$local <- gsub(" ", "", myDF$local, fixed = TRUE)
+
+
+# Padronizando para letras maiusculas
+myDF$genotipo <- toupper(myDF$genotipo)
+myDF$local <- toupper(myDF$local)
+
+myDF<-sinoFun(myDF)
+
+
+#Preparando o arquivo com checks
+checksCS$Genotipo <- gsub(" ", "", checksCS$Genotipo, fixed = TRUE)
+checksCS$Genotipo <- toupper(checksCS$Genotipo)
+
+checksCS$Trait <- gsub("COSTR","cornStunt",checksCS$Trait)
+checksF <- checksCS %>% filter(Trait == "cornStunt")
+colnames(checksF) <- c("genotipo", "Check", "Trait", "Esperado", "Tipo")
+
+checksF<-sinoFun(checksF)
+
+
+```
+
+
+## Checando as entradas por local
+
+Mostrando o número de entradas (plots) em cada local. Locais com menos de 30 plots avaliados não entram na análise pois já indica que a área não apresenta pressão para ser avaliada.
+
+```{r entradasLoc, echo =FALSE, warning=FALSE}
+
+myDF$season <- substring(myDF$local,3,4)
+
+myDF <- myDF %>% filter(season %in% "WN")
+
+entradasLoc <- as.data.frame(tapply(myDF$genotipo, myDF$local,length))
+entradasLoc <- entradasLoc %>% mutate(local = rownames(entradasLoc))
+
+colnames(entradasLoc)[1] <- "Entradas"
+entradasLoc <- entradasLoc %>% arrange(Entradas)
+# entradasLoc <- na.omit(entradasLoc)
+require(forcats)
+library(ggplot2)
+
+# Reorder following the value of another column:
+entradasLoc %>% mutate(local=fct_reorder(local, desc(Entradas))) %>% 
+  ggplot( aes(x=local, y=Entradas)) +
+  geom_bar(stat="identity", fill="#f68060", alpha=.6, width=.4) + coord_flip() +
+  xlab("Locais") + ylab("Numero de Entradas") +
+  theme_bw()
+
+# Filtrar por local
+entradasLoc <- entradasLoc %>% filter(Entradas>30)
+dfLocal <- entradasLoc$local
+
+```
+
+
+## Classificando os locais:
+
+
+```{r classLoc, include=FALSE, warning=FALSE}
+# Rodar lme4 para BLUE e Herdabilidade para cada local
+BLUEs <- local_blup(dfLocal,"no")
+
+
+# Classificando como alta - media - baixa pressao
+classifica <- classLocations(BLUEs, checksF)
+classifica$Local <- as.character(classifica$Local)
+resumoLoc$local <- as.character(resumoLoc$local)
+
+
+
+
+# Juntando com os dados de Herdabilidade
+novaTabela <- left_join(classifica,resumoLoc,by=c("Local"="local"))
+novaTabela$Desvio <- round(novaTabela$Desvio,3)
+if(duasT=="no"){
+  novaTabela$Acuracia <- round((1-(novaTabela$Probabilidade)+novaTabela$H2N)/2,3)
+}else{
+  novaTabela$Acuracia <- round((1-(novaTabela$Probabilidade)+novaTabela$H2N+novaTabela$H2Y)/3,3)
+}
+
+
+# Indice de qualidade/Acuracia
+finalTabela <- finalClass(novaTabela, qControl, limiteAlta, limiteBaixa)
+finalTabela2 <- finalTabela %>% dplyr::select(Local,classe,Controles,Desvio) # Pode Adicionar Acuracia 
+# knitr::kable(finalTabela2)
+```
+
+```{r tabelaLoc, echo=FALSE}
+DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
+
+```
+
+## Graficos por local
+
+```{r graficos, echo=FALSE, warning=FALSE,}
+library(gridExtra)
+library(ggplot2)
+for(i in 1:length(unique(finalTabela2$Local))){
+  myGraph <- myDF %>% filter(local %in% finalTabela2$Local[i], genotipo %in% checksF$genotipo)
+  p1 <- makeG0(myGraph,"genotipo","Nota")
+  p2 <- makeH0(myGraph,"Nota")
+  grid.arrange(p1, p2, ncol = 2)
+}
+
+
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

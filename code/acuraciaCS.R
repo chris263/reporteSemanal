@@ -1,0 +1,218 @@
+
+classLocations <- function(preAll, checks){
+  # preAll <- BLUEs
+  # checks <- checksF
+
+  phenoAll <- c()
+  preAll <- preAll%>%mutate(Esperado = 0)
+  preAll <- preAll%>%mutate(Check = 0)
+  preAll <- preAll%>%mutate(Tipo="Obs")
+
+
+  # myCheck <- unique(checks$genotipo)
+  preCheck <- preAll %>% filter(genotipo %in% checks$genotipo)
+  myCheck <- unique(preCheck$genotipo)
+
+  # Separando os que nao sao checks
+  nonCheck <- preAll%>%filter(!genotipo %in% myCheck)
+
+  # Loop para separar por check
+  for(i in 1:length(myCheck)){
+    # i=1
+    # cat("Genotipo ", myCheck[i], i, "\n")
+    checkPheno <- preAll %>% filter(genotipo == myCheck[i])
+
+    if(nrow(checkPheno)>0){
+      notaCheck <- as.numeric(unique(checks %>% filter(genotipo == myCheck[i]) %>% dplyr::select(Esperado)))
+      checkPheno$Esperado <- notaCheck
+      checkPheno$Check <- 1
+      if(notaCheck < 3){
+        checkPheno$Tipo <- "T"
+      }else if(notaCheck>=3 && notaCheck<5){
+        checkPheno$Tipo <- "MT"
+      }else if(notaCheck>=5 && notaCheck<7){
+        checkPheno$Tipo <- "MS"
+      }else{
+        checkPheno$Tipo <- "S"
+      }
+      phenoAll <- rbind(phenoAll,checkPheno)
+    }else{
+      cat("Sem check ",i,"\n")
+    }
+
+
+
+  }
+
+  # Adicionando os demais materiais que não são checks
+  phenoAll <- rbind(phenoAll,nonCheck)
+
+  # colnames(phenoAll)[1] <- "blueN"
+  phenoAll$blueN <- as.numeric(phenoAll$blueN)
+  phenoAll$Esperado <- as.numeric(phenoAll$Esperado)
+
+  # Pegando apenas os locais que tem checks
+  comChecks <- as.data.frame(tapply(phenoAll$Check,phenoAll$local,sum))
+  colnames(comChecks)<-c("blups")
+  comChecks <- comChecks %>% filter(comChecks$blups != 0)
+
+  # Vetor com os nomes dos locais que possuem checks
+  nomesLocais <- rownames(comChecks)
+
+  if(length(nomesLocais) ==0){
+    cat("Sem classificação...","\n")
+    break
+    }
+
+  # Criando um dataframe para armazenar o resultado
+  classFinal <- data.frame("Local"=as.character(nomesLocais),
+                           "classe"= as.character("classe"),
+                           "Probabilidade"= as.numeric(0),
+                           "Controles"=as.character("controles"),
+                           "Desvio"=as.numeric(0))
+
+  # Classificando os locais
+
+  for(i in 1:length(nomesLocais)){
+    # i=1
+    # cat("Local: ",i,"\n")
+    # Filtrando por local
+    selectedLocal <- phenoAll %>% filter(local == nomesLocais[i])
+    classFinal$Local[i] <- nomesLocais[i]
+
+    #Verificando se possui checks para as 4 classes
+    tipos <- as.data.frame(tapply(checks$Esperado,checks$Tipo,mean))
+    tipos$tipo <- rownames(tipos)
+    colnames(tipos) <- c("notas","tipos")
+    ansTipos <- c("NA","NA","NA","NA")
+    ansTipos[1] <- "T"  %in% tipos$tipos
+    ansTipos[2] <- "MT" %in% tipos$tipos
+    ansTipos[3] <- "MS" %in% tipos$tipos
+    ansTipos[4] <- "S"  %in% tipos$tipos
+
+    # Vetor com os checks
+    # checks <- selectedLocal %>% filter(Check == 1, Esperado == 4 | Esperado == 5 )
+    checks <- selectedLocal %>% filter(Check == 1)
+    chiDF <- data.frame(tapply(checks$blueN,checks$genotipo,mean)) %>% data.frame(tapply(checks$Esperado,checks$genotipo,mean))
+    colnames(chiDF) <- c("Obs","Esp")
+
+    # Calculando chi quadrado
+    chiDF$X2 <- (chiDF$Obs - chiDF$Esp)^2/chiDF$Esp
+    if(nrow(chiDF==1) | nrow(chiDF==0)){
+      GL=1
+    }else{
+      GL=nrow(chiDF)-1
+    }
+    classFinal$Probabilidade[i] <- 1-pchisq(sum(chiDF$X2),GL)
+
+    # Soma das diferenças para ajudar na classificação
+    chiDF$Diff <- chiDF$Obs - chiDF$Esp
+    classFinal$Desvio[i] <- sum(chiDF$Diff) # para auxiliar na classificação
+
+    # Armazenando os tipos de checks do local
+    classCheck = ""
+    for(z in 1:length(tipos$tipos)){
+     # z=1
+      classCheck1 <- tipos$tipos[z]
+      classCheck <- paste0(classCheck1," ",classCheck)
+    }
+
+    classCheck <- na.omit(classCheck)
+    classFinal$Controles[i] <- classCheck
+
+
+
+}
+
+ return(classFinal)
+}
+
+
+finalClass<- function(enterTable, qualC, limA, limB){
+  # enterTable = novaTabela
+  # qualC=qControl
+  # limA=limiteAlta
+  # limB=limiteBaixa
+
+  enterTable <- na.omit(enterTable)
+  outTabela <- enterTable
+
+  for(i in 1:nrow(outTabela)){
+
+    somaDiff <- outTabela$Desvio[i]
+    qc <- outTabela$Acuracia[i]
+
+    if( somaDiff > limA && qc > qualC){
+
+      outTabela[i,2] <- "Alta"
+
+    }else if(somaDiff > limB && somaDiff < limA){
+
+      outTabela[i,2] <- "Media"
+
+    }else if (somaDiff < limB) {
+
+      outTabela[i,2] <- "Baixa"
+
+    }else if(somaDiff > limA && qc < qualC){
+
+      outTabela[i,2] <- "Low QC"
+
+    }
+  }
+
+ return(outTabela)
+
+}
+
+joint_analysis <- function(inBLUE,locP){
+  # inBLUE = altaPP
+  library(sommer)
+  inBLUE$localGeno <- paste0(inBLUE$local,inBLUE$genotipo)
+  if(locP=="yes"){
+    modeloConjunto <- mmer(blueN ~ local,
+                           random= ~ vs(genotipo, Gtc=unsm(1)) + vs(localGeno, Gtc=unsm(1)),
+                           rcov= ~ vs(units, Gtc=unsm(1)),
+                           # tolparinv = 1e100000,
+                           data=inBLUE, verbose = FALSE)
+  }else{
+    modeloConjunto <- mmer(blueN ~ 1,
+                           random= ~ vs(genotipo, Gtc=unsm(1)) + vs(localGeno, Gtc=unsm(1)),
+                           rcov= ~ vs(units, Gtc=unsm(1)),
+                           # tolparinv = 1e100000,
+                           data=inBLUE, verbose = FALSE)
+  }
+  return(modeloConjunto)
+}
+
+joint_blup <- function(inData, locP){
+  # inData = myDF
+  if(locP == "yes"){
+    modeloAllNota <- lmer(Nota ~  local + (1| genotipo), data = inData)
+  }else{
+    modeloAllNota <- lmer(Nota ~  1 + (1| genotipo), data = inData)
+  }
+
+  BlupNota <- coef(modeloAllNota)$genotipo
+  BlupNota <- BlupNota[1]
+  finalNota <- cbind(rownames(BlupNota),BlupNota$`(Intercept)`)
+  colnames(finalNota) <- c("genotipo","blupNota")
+  finalNota <- as.data.frame(finalNota)
+
+  finalData <- finalNota %>% arrange(desc(blupNota))
+  preResult <- left_join(finalData,BLUEs,by=c("genotipo"="genotipo"))
+  preResult$blupNota <- as.numeric(preResult$blupNota)
+  preResult <- preResult %>% arrange(blupNota)
+
+  Result <- preResult %>% distinct(genotipo, blupNota) %>% dplyr::select(genotipo,blupNota)
+
+  return(Result)
+
+}
+
+
+
+
+
+
+

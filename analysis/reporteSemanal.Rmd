@@ -1,0 +1,404 @@
+---
+title: "Reporte Semanal"
+author: "Trait Assessment"
+date: "5/17/2022"
+output:
+  html_document:
+    self_contained: yes
+    mode: selfcontained
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+ip <- installed.packages()
+packages_used <- c("grid","here","hrbrthemes","viridis","ggplot2","geobr",
+                   "sf","maptools","leaflet","dplyr","tidyr","stringi",
+                   "grid","gridExtra","forcats","sommer","lme4")
+
+ip <- installed.packages()
+for (package in packages_used){
+  if (!(package %in% ip[,"Package"])) install.packages(package)
+}#END packages_used
+
+here::i_am("../analysis/reporteSemanal.Rmd")
+
+```
+
+
+```{r uploading, include=FALSE, warning=FALSE}
+set.seed(12345)
+library(dplyr)
+
+# Codigos auxiliares
+source("../code/parseCS.R")
+source("../code/acuraciaCS.R")
+source("../code/selectionIndex.R")
+source("../code/graficos.R")
+
+
+## Usar o formato csv para evitar problemas nos dados
+## Inserir uma coluna em branco no csv
+rawPheno1 <- read.csv("../data/TPP11_csv_06062022.csv", header=T, sep=",")
+rawPheno2 <- read.csv("../data/TPP11_csv.csv", header=T, sep=",")
+rawPheno3 <- read.csv("../data/TPP11_csv_06062022_v2.csv", header=T, sep=",")
+rawPheno4 <- read.csv("../data/TPP10_csv_06062022.csv", header=T, sep=",")
+rawPheno5 <- read.csv("../data/TPP12_08062022.csv", header=T, sep=",")
+rawPheno6 <- read.csv("../data/TPP09_csv_06062022.csv", header=T, sep=",")
+
+
+# Selecionando o trait que vamos trabalhar
+
+tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR"),
+                          nome=c("cornStunt", "manchaFoliar", "turcicum", "manchaBranca"))
+
+selTrait <- tableTraits$nome[1]
+
+filterTrait <- tableTraits %>% filter(nome %in% selTrait)
+
+
+myDF1 <- data.frame(local=as.character(rawPheno1$PSS.EXT.EXTID),genotipo=as.character(rawPheno1$ABBRC),
+                   rep=as.numeric(rawPheno1$PSS.REPNO),
+                   COSTR=as.numeric(rawPheno1$PSS.COSTR),
+                   HELMR=as.numeric(rawPheno1$PSS.HELMR),
+                   GRLSR=as.numeric(rawPheno1$PSS.GRLSR),
+                   LFSPR=as.numeric(rawPheno1$PSS.LFSPR),
+                   TPP="TPP11",
+                   range=as.numeric(rawPheno1$VCRD), row=as.numeric(rawPheno1$HCRD))
+
+myDF2 <- data.frame(local=as.character(rawPheno2$PSS.EXT.EXTID),genotipo=as.character(rawPheno2$ABBRC),
+                   rep=as.numeric(rawPheno2$PSS.REPNO),
+                   COSTR=as.numeric(rawPheno2$PSS.COSTR),
+                   HELMR=as.numeric(rawPheno2$PSS.HELMR),
+                   GRLSR=NA, #grlsr=as.numeric(rawPheno2$PSS.GRLSR),
+                   LFSPR=as.numeric(rawPheno2$PSS.LFSPR),
+                   TPP="TPP11",
+                   range=as.numeric(rawPheno2$VCRD), row=as.numeric(rawPheno2$HCRD))
+
+myDF3 <- data.frame(local=as.character(rawPheno3$PSS.EXT.EXTID),genotipo=as.character(rawPheno3$ABBRC),
+                   rep=as.numeric(rawPheno3$PSS.REPNO),
+                   COSTR=as.numeric(rawPheno3$PSS.COSTR),
+                   HELMR=as.numeric(rawPheno3$PSS.HELMR),
+                   GRLSR=as.numeric(rawPheno3$PSS.GRLSR),
+                   LFSPR=as.numeric(rawPheno3$PSS.LFSPR),
+                   TPP="TPP11",
+                   range=as.numeric(rawPheno3$VCRD), row=as.numeric(rawPheno3$HCRD))
+
+myDF4 <- data.frame(local=as.character(rawPheno4$PSS.EXT.EXTID),genotipo=as.character(rawPheno4$ABBRC),
+                   rep=as.numeric(rawPheno4$PSS.REPNO),
+                   COSTR=as.numeric(rawPheno4$PSS.COSTR),
+                   HELMR=as.numeric(rawPheno4$PSS.HELMR),
+                   GRLSR=as.numeric(rawPheno4$PSS.GRLSR),
+                   LFSPR=as.numeric(rawPheno4$PSS.LFSPR),
+                   TPP="TPP10",
+                   range=as.numeric(rawPheno4$PSS.STRNG), row=as.numeric(rawPheno4$PSS.STROW))
+
+myDF5 <- data.frame(local=as.character(rawPheno5$PSS.EXT.EXTID),genotipo=as.character(rawPheno5$ABBRC),
+                   rep=as.numeric(rawPheno5$PSS.REPNO),
+                   COSTR=as.numeric(rawPheno5$PSS.COSTR),
+                   HELMR=as.numeric(rawPheno5$PSS.HELMR),
+                   GRLSR=NA,# GRLSR=as.numeric(rawPheno5$PSS.GRLSr),
+                   LFSPR=as.numeric(rawPheno5$PSS.LFSPR),
+                   TPP="TPP12",
+                   range=as.numeric(rawPheno5$PSS.MAXRNG), row=as.numeric(rawPheno5$PSS.MAXROW))
+
+myDF6 <- data.frame(local=as.character(rawPheno6$PSS.EXT.EXTID),genotipo=as.character(rawPheno6$PSS.EEXT.MAT.ABBRC),
+                   rep=as.numeric(rawPheno6$PSS.REPNO),
+                   COSTR=as.numeric(rawPheno6$PSS.COSTR),
+                   HELMR=as.numeric(rawPheno6$PSS.HELMR),
+                   GRLSR=as.numeric(rawPheno6$PSS.GRLSR),
+                   LFSPR=as.numeric(rawPheno6$PSS.LFSPR),
+                   TPP="TPP09",
+                   range=as.numeric(rawPheno6$PSS.STRNG), row=as.numeric(rawPheno6$PSS.STROW))
+
+# Combinando os arquivos
+
+allData <- rbind(myDF1,myDF2,myDF3,myDF4,myDF5, myDF6) # Conjunta
+
+## Filtrar por TPP
+myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
+allData <- allData %>% filter(TPP %in% myTPP)
+unique(allData$TPP)
+
+
+## Filtrar por estagio
+myStag <- c(4,5,6) # Aqui estão todos
+
+# Carregando arquivos auxiliares de checks e sinonimos
+checksCS <- readxl::read_xlsx("../data/suporteMilho.xlsx", sheet="Checks")
+checksCS$Esperado <- as.numeric(checksCS$Esperado)
+sinN <- readxl::read_xlsx("../data/suporteMilho.xlsx", sheet="Sinonimos")
+colnames(sinN) <- c("genotipo","Novo")
+
+#Analisar yiedl junto?
+duasT <- "no"
+
+#limites
+limiteAlta <- 0 #Desvio a partir de 0 passa a ser alta
+limiteBaixa <- -2 #Desvio entre -2 e 0 é media pressao
+
+# quality control
+qControl <- 0.2 #trashold
+
+```
+
+
+## Controle de qualidade
+
+```{r controle, echo=FALSE, warning=FALSE}
+## Agora nao precisa mais fazer alteracoes
+# Selecionando o trait
+myDFF <- allData %>% select(local,genotipo,rep,filterTrait$codigo[1],TPP,range,row)
+colnames(myDFF)[4] <- "Nota"
+
+# Removendo dados perdidos e duplicatas
+myDFF <- na.omit(myDFF)
+myDF <- distinct(myDFF,local,genotipo,rep, .keep_all = TRUE)
+
+# Preparando os checks
+checksCS$Trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$Trait)
+checksF <- checksCS %>% filter(Trait %in% filterTrait$nome[1])
+
+
+library(stringi)
+testeTPP12 <- nrow(myDF %>% filter(TPP=="TPP12"))
+if(testeTPP12>0){
+  
+  myTPP12 <- myDF %>% filter(TPP=="TPP12")
+  
+  # Acreditando que a season esta certa
+  myTPP12$season <- "WN"
+  
+  # capturando o estagio
+  myTPP12$stg <- as.numeric(stri_sub(myTPP12$local, -3,-3))
+  myTPP12 <- myTPP12 %>% filter(stg %in% myStag)
+  
+  # Qualquer BU
+  myTPP12$BU <- NA
+}
+
+## Contando os data points para WN = safrinha
+myDF$season <- substring(myDF$local,3,4)
+myDF <- myDF %>% filter(season %in% "WN")
+
+# capturando o estagio
+myDF$stg <- as.numeric(stri_sub(myDF$local, -7,-7))
+myDF <- myDF %>% filter(stg %in% myStag)
+
+# Capturando as BUs
+myDF$BU <- stri_sub(myDF$local, -4)
+
+if(testeTPP12>0){
+  myDF <- rbind(myDF,myTPP12)
+}
+
+allData$BU <- stri_sub(allData$local, -4)
+allData <- allData %>% filter(local %in% myDF$local)
+allData$BU <- stri_sub(allData$local, -4)
+
+# Contador de datapoints
+for(i in 1:length(tableTraits$codigo)){
+  # i=1
+  dataPoint <- allData %>% select(tableTraits$codigo[i], BU, local)
+  dataPoint <- na.omit(dataPoint)
+  trt <- nrow(dataPoint)
+  tableTraits$dataPoints[i] <- trt
+  tableTraits$BU[i] <- length(unique(dataPoint$BU))
+  tableTraits$experimentos[i] <- length(unique(dataPoint$local))
+}
+
+# Adicionando uma linha com os totais:
+tableTraits[nrow(tableTraits)+1,] <- c("Total","Total",sum(tableTraits$dataPoints),
+                                       sum(tableTraits$BU),sum(tableTraits$experimentos))
+
+knitr::kable(tableTraits)
+
+```
+
+## Preparando para as analises
+
+Carregando os dados e checando os nomes dos genótipo, checks, locais.
+
+```{r pressure, warnings=FALSE, echo=FALSE, include=FALSE}
+
+
+# Preparando para as analises
+# Padronizando nomes: Removendo espaços e passando para maiusculas
+myDF$genotipo <- gsub(" ", "", myDF$genotipo, fixed = TRUE)
+myDF$local <- gsub(" ", "", myDF$local, fixed = TRUE)
+myDF$genotipo <- toupper(myDF$genotipo)
+myDF$local <- toupper(myDF$local)
+
+# Alterando os nomes de acordo com os sinonimos
+myDF<-sinoFun(myDF,sinN) # esta no arquivo parse
+
+#Preparando o arquivo com checks
+checksCS$Genotipo <- gsub(" ", "", checksCS$Genotipo, fixed = TRUE)
+checksCS$Genotipo <- toupper(checksCS$Genotipo)
+colnames(checksF) <- c("genotipo", "Check", "Trait", "Esperado", "Tipo")
+
+checksF<-sinoFun(checksF,sinN)
+
+# Verificando o numero de checks utilizados
+meusChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% dplyr::select(genotipo,local)
+meusChecks <- distinct(meusChecks,genotipo,local, .keep_all = TRUE) %>% arrange(genotipo)
+
+contaChecks <- count(meusChecks, vars = genotipo)
+colnames(contaChecks) <- c("check","numeroLocais")
+contaChecks <- contaChecks %>% arrange(desc(numeroLocais))
+
+checksFora <- subset(checksF,!(checksF$genotipo %in% contaChecks$check))
+knitr::kable(checksFora)
+knitr::kable(contaChecks)
+
+
+```
+
+
+## Checando as entradas por local
+
+Mostrando o número de entradas (plots) em cada local. Locais com menos de 30 plots avaliados não entram na análise pois já indica que a área não apresenta pressão para ser avaliada.
+
+```{r entradasLoc, echo =FALSE, warning=FALSE}
+
+# Calculando as entradas por local
+entradasLoc <- as.data.frame(tapply(myDF$genotipo, myDF$local,length))
+entradasLoc <- entradasLoc %>% mutate(local = rownames(entradasLoc))
+
+colnames(entradasLoc)[1] <- "Entradas"
+entradasLoc <- entradasLoc %>% arrange(Entradas)
+# entradasLoc <- na.omit(entradasLoc)
+require(forcats)
+library(ggplot2)
+
+# Reorder following the value of another column:
+entradasLoc %>% mutate(local=fct_reorder(local, desc(Entradas))) %>% 
+  ggplot( aes(x=local, y=Entradas)) +
+  geom_bar(stat="identity", fill="#f68060", alpha=.6, width=.4) + coord_flip() +
+  xlab("Locais") + ylab("Numero de Entradas") +
+  theme_bw()
+
+# Filtrar por local
+entradasLoc <- entradasLoc %>% filter(Entradas>30)
+dfLocal <- entradasLoc$local
+
+```
+
+
+## Classificando os locais:
+
+
+```{r classLoc, include=TRUE, warning=FALSE}
+# Rodar lme4 para BLUE e Herdabilidade para cada local
+BLUEs <- local_blup(dfLocal,duasT) # arquivo selectionIndex.R
+
+# Classificando como alta - media - baixa pressao
+classifica <- classLocations(BLUEs, checksF) # arquivo acuracia.R
+classifica$Local <- as.character(classifica$Local)
+resumoLoc$local <- as.character(resumoLoc$local)
+
+# Juntando com os dados de Herdabilidade
+novaTabela <- left_join(classifica,resumoLoc,by=c("Local"="local"))
+novaTabela$Desvio <- round(novaTabela$Desvio,3)
+if(duasT=="no"){
+  novaTabela$Acuracia <- round((novaTabela$Probabilidade+novaTabela$H2N)/2,3)
+}else{
+  novaTabela$Acuracia <- round((novaTabela$Probabilidade+novaTabela$H2N+novaTabela$H2Y)/3,3)
+}
+
+
+# Indice de qualidade/Acuracia
+finalTabela <- finalClass(novaTabela, qControl, limiteAlta, limiteBaixa)
+finalTabela2 <- finalTabela %>% dplyr::select(Local,classe,Controles,Desvio, Acuracia) %>% arrange(desc(Desvio))# Pode Adicionar Acuracia 
+knitr::kable(finalTabela2)
+# DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
+```
+
+
+
+## Graficos por local
+
+```{r graficos, echo=FALSE, warning=FALSE}
+
+
+require(gridExtra)
+for(i in 1:length(unique(finalTabela2$Local))){
+  # i=1
+  myGraph <- myDF %>% filter(local %in% finalTabela2$Local[i], genotipo %in% checksF$genotipo)
+  p1 <- makeG0(myGraph,"genotipo","Nota")
+  p2 <- makeH0(myGraph,"Nota")
+  p3 <- makeG9(myGraph,c("MS","MT"))
+  p4 <- makeG9(myGraph,c("S","T"))
+  # grid.arrange(p1, p2, ncol = 2)
+  grid.arrange(p3, p4, ncol = 2)
+}
+
+
+
+```
+
+
+# locais
+
+```{r tabelaLoc, echo=FALSE}
+
+# 
+locAlta <- finalTabela2 %>% filter(classe == "Alta") %>% dplyr::select(Local)
+
+
+
+# Adicionar algum local a alta pressao
+# novoLoc <- finalTabela2$Local[2]
+# locAlta <- rbind(locAlta,novoLoc)
+
+# altaPP <- BLUEs %>% filter(local %in% locAlta$Local)
+
+altaPP <- myDF %>% filter(local %in% locAlta$Local)
+
+modelo1 <- joint_blup(altaPP, "no") # yes = local efeito fixo, no = local nao entra como efeito
+
+
+# finalBLUP <- calc_blups(modelo1,"no") # yes = yield e nota juntos. no = apenas nota
+
+finalTabela2$classe[finalTabela2$Local%in%novoLoc] <- "Alta"
+
+DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
+
+# 
+# if(length(locAlta)>0){
+#   genoAlta <- BLUEs %>% filter(local %in% locAlta$Local)
+#   DT::datatable(genoAlta, options=list(search=list(regex=TRUE, search = '')))
+#   write.csv(genoAlta,"data/genotiposClasses.csv", row.names = F)
+# 
+# }
+
+
+```
+
+```{r heatmap, echo=F, warning=FALSE}
+
+
+# 
+makeHM(myDF,locAlta$Local[1])
+# 
+# 
+# unique(myDF$local)
+# 
+# max(myDF$Nota,na.rm=T)
+# 
+# 
+meanData <- data.frame(tapply(myDF$Nota,myDF$genotipo,mean,rm.na=T))
+meanData$genotipo <- rownames(meanData)
+colnames(meanData)[1]<-"nota"
+
+meanData <- na.omit(meanData)
+
+
+meanData
+# 
+# write.csv(meanData,"data/turcicumTPP09.csv", row.names = F)
+# 
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
