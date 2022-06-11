@@ -1,5 +1,82 @@
 
 
+library(stringr)
+read_fun <- function(inLista){
+  # inLista = filenames
+  finalData <- data.frame(TPP=NA,
+                          local=NA,
+                          genotipo=NA,
+                          plotID=NA,
+                          rep=NA,
+                          COSTR=NA,
+                          HELMR=NA,
+                          GRLSR=NA,
+                          LFSPR=NA,
+                          range=NA,
+                          row=NA,
+                          BU=NA,
+                          stg=NA,
+                          season=NA
+                          )
+
+  for(i in 1:length(inLista)){
+    # i=2
+    inFile <- inLista[i]
+    # inFile <- gsub(pattern = "../",replacement = "",x = inFile,fixed = T)
+
+    checkError <- FALSE
+    tryCatch( { readData <- read.csv(file=inFile, header=T, as.is=1, sep=",") }
+              , warning = function(w) { cat("Arquivo \"",inFile,"\" nao encontrado.\n"); checkError <- TRUE })
+
+    if(checkError == T){stop("Arquivo nao encontrado, checar o local do arquivo.")}
+
+    readData$TPP <- NA
+    nomesCol <- colnames(readData)
+    if(length(nomesCol)==1){ readData <- read.csv(file=inFile, header=T, as.is=1, sep=";")}
+
+    selNames <- c("TPP","EXTID","ABBRC","PLTID","REPNO","COSTR","HELMR","GRLSR","LFSPR","STRNG","STROW")
+    checkNames <- match("TRUE",str_detect(nomesCol,paste(selNames[1:5],collapse = "|")))
+    if(is.na(checkNames)==T){stop("Stop! Esta faltando umas das colunas principais, checar arquivo.")}
+
+    newData <- readData
+
+    count = 1
+    for(i in 1:length(selNames)){
+      # i=1
+      posName <- match("TRUE",str_detect(nomesCol,selNames[i]))
+      if(is.na(posName==T)){
+        cat("Esta faltando a coluna",selNames[i],"no arquivo", inFile ,"adicionando como NA.\n")
+        newData[,length(nomesCol)+count] <- NA
+        colnames(newData)[length(nomesCol)+count] <- selNames[i]
+        count=count+1
+      }else{
+        colnames(newData)[posName] <- selNames[i]
+      }
+
+    }
+    newData <- newData %>% select(all_of(selNames))
+
+    colnames(newData) <- c("TPP","local","genotipo","plotID","rep","COSTR","HELMR","GRLSR","LFSPR","range","row")
+    testeTPP <- str_detect(inFile,"..")
+    if(testeTPP == T){
+      newData$TPP <- stri_sub(inFile, 9,13)
+    }else{
+      newData$TPP <- stri_sub(inFile, 6,10)
+    }
+
+    newData$BU <- stri_sub(newData$local, -4) # capturando as BUs
+    newData$stg <- as.numeric(stri_sub(newData$local, -7,-7))
+    ## Contando os data points para WN = safrinha
+    newData$season <- substring(newData$local,3,4)
+    newData <- newData %>% filter(season %in% "WN")
+    finalData <- rbind(finalData,newData)
+  }
+  finalData <- finalData[-1,]
+
+  return(finalData)
+
+}
+
 #filtrando para locais que possuem dados de corn stunt
 filter_locais <- function(inLoc, stg, yrs, crt5, minEnter, maxEnter,inSea){
   # inLoc <- myDF

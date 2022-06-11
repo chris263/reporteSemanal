@@ -28,6 +28,7 @@ here::i_am("analysis/reporteSemanal.Rmd")
 ```{r uploading, include=FALSE, warning=FALSE}
 set.seed(12345)
 library(dplyr)
+library(stringi)
 
 # Codigos auxiliares
 source("../code/parseCS.R")
@@ -38,106 +39,34 @@ source("../code/graficos.R")
 
 ## Usar o formato csv para evitar problemas nos dados
 ## Inserir uma coluna em branco no csv
-rawPheno1 <- read.csv("../data/TPP11_csv_06062022.csv", header=T, sep=",")
-rawPheno2 <- read.csv("../data/TPP11_csv.csv", header=T, sep=",")
-rawPheno3 <- read.csv("../data/TPP11_csv_06062022_v2.csv", header=T, sep=",")
-rawPheno4 <- read.csv("../data/TPP10_csv_06062022.csv", header=T, sep=",")
-rawPheno5 <- read.csv("../data/TPP12_08062022.csv", header=T, sep=",")
-rawPheno6 <- read.csv("../data/TPP09_csv_06062022.csv", header=T, sep=",")
-rawPheno7 <- read.csv("../data/TPP12_10062022.csv", header=T, sep=",")
 
-# Selecionando o trait que vamos trabalhar
+filenames <- list.files("../data", pattern=glob2rx("^TPP*.csv$"), full.names=TRUE)
+print("Confirme os nomes dos arquivos lidos. Esta faltando algum?")
+print(filenames)
 
-tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR"),
-                          nome=c("cornStunt", "manchaFoliar", "turcicum", "manchaBranca"))
-
-selTrait <- tableTraits$nome[1]
-filterTrait <- tableTraits %>% filter(nome %in% selTrait)
-
-## Filtrar por TPP
-myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
-
-## Filtrar por estagio
-myStag <- c(4,5,6) # Aqui estão todos
-
-
-
-myDF1 <- data.frame(local=as.character(rawPheno1$PSS.EXT.EXTID),genotipo=as.character(rawPheno1$ABBRC),
-                   rep=as.numeric(rawPheno1$PSS.REPNO),
-                   COSTR=as.numeric(rawPheno1$PSS.COSTR),
-                   HELMR=as.numeric(rawPheno1$PSS.HELMR),
-                   GRLSR=as.numeric(rawPheno1$PSS.GRLSR),
-                   LFSPR=as.numeric(rawPheno1$PSS.LFSPR),
-                   TPP="TPP11",
-                   range=as.numeric(rawPheno1$VCRD), row=as.numeric(rawPheno1$HCRD))
-
-myDF2 <- data.frame(local=as.character(rawPheno2$PSS.EXT.EXTID),genotipo=as.character(rawPheno2$ABBRC),
-                   rep=as.numeric(rawPheno2$PSS.REPNO),
-                   COSTR=as.numeric(rawPheno2$PSS.COSTR),
-                   HELMR=as.numeric(rawPheno2$PSS.HELMR),
-                   GRLSR=NA, #grlsr=as.numeric(rawPheno2$PSS.GRLSR),
-                   LFSPR=as.numeric(rawPheno2$PSS.LFSPR),
-                   TPP="TPP11",
-                   range=as.numeric(rawPheno2$VCRD), row=as.numeric(rawPheno2$HCRD))
-
-myDF3 <- data.frame(local=as.character(rawPheno3$PSS.EXT.EXTID),genotipo=as.character(rawPheno3$ABBRC),
-                   rep=as.numeric(rawPheno3$PSS.REPNO),
-                   COSTR=as.numeric(rawPheno3$PSS.COSTR),
-                   HELMR=as.numeric(rawPheno3$PSS.HELMR),
-                   GRLSR=as.numeric(rawPheno3$PSS.GRLSR),
-                   LFSPR=as.numeric(rawPheno3$PSS.LFSPR),
-                   TPP="TPP11",
-                   range=as.numeric(rawPheno3$VCRD), row=as.numeric(rawPheno3$HCRD))
-
-myDF4 <- data.frame(local=as.character(rawPheno4$PSS.EXT.EXTID),genotipo=as.character(rawPheno4$ABBRC),
-                   rep=as.numeric(rawPheno4$PSS.REPNO),
-                   COSTR=as.numeric(rawPheno4$PSS.COSTR),
-                   HELMR=as.numeric(rawPheno4$PSS.HELMR),
-                   GRLSR=as.numeric(rawPheno4$PSS.GRLSR),
-                   LFSPR=as.numeric(rawPheno4$PSS.LFSPR),
-                   TPP="TPP10",
-                   range=as.numeric(rawPheno4$PSS.STRNG), row=as.numeric(rawPheno4$PSS.STROW))
-
-myDF5 <- data.frame(local=as.character(rawPheno5$PSS.EXT.EXTID),genotipo=as.character(rawPheno5$ABBRC),
-                   rep=as.numeric(rawPheno5$PSS.REPNO),
-                   COSTR=as.numeric(rawPheno5$PSS.COSTR),
-                   HELMR=as.numeric(rawPheno5$PSS.HELMR),
-                   GRLSR=NA,# GRLSR=as.numeric(rawPheno5$PSS.GRLSr),
-                   LFSPR=as.numeric(rawPheno5$PSS.LFSPR),
-                   TPP="TPP12",
-                   range=as.numeric(rawPheno5$PSS.MAXRNG), row=as.numeric(rawPheno5$PSS.MAXROW))
-
-myDF6 <- data.frame(local=as.character(rawPheno6$PSS.EXT.EXTID),genotipo=as.character(rawPheno6$PSS.EEXT.MAT.ABBRC),
-                   rep=as.numeric(rawPheno6$PSS.REPNO),
-                   COSTR=as.numeric(rawPheno6$PSS.COSTR),
-                   HELMR=as.numeric(rawPheno6$PSS.HELMR),
-                   GRLSR=as.numeric(rawPheno6$PSS.GRLSR),
-                   LFSPR=as.numeric(rawPheno6$PSS.LFSPR),
-                   TPP="TPP09",
-                   range=as.numeric(rawPheno6$PSS.STRNG), row=as.numeric(rawPheno6$PSS.STROW))
-
-myDF7 <- data.frame(local=as.character(rawPheno7$PSS.EXT.EXTID),genotipo=as.character(rawPheno7$ABBRC),
-                   rep=as.numeric(rawPheno7$PSS.REPNO),
-                   COSTR=as.numeric(rawPheno7$PSS.COSTR),
-                   HELMR=as.numeric(rawPheno7$PSS.HELMR),
-                   GRLSR = NA, # GRLSR=as.numeric(rawPheno7$PSS.GRLSR),
-                   LFSPR=as.numeric(rawPheno7$PSS.LFSPR),
-                   TPP="TPP12",
-                   range=as.numeric(rawPheno7$PSS.MAXRNG), row=as.numeric(rawPheno7$PSS.MAXROW))
-
-# Combinando os arquivos
-
-allData <- rbind(myDF1,myDF2,myDF3,myDF4,myDF5, myDF6) # Conjunta
-allData <- allData %>% filter(TPP %in% myTPP)
-allData$BU <- stri_sub(allData$local, -4)
-
-
+allData <- read_fun(filenames)
 
 # Carregando arquivos auxiliares de checks e sinonimos
 checksCS <- readxl::read_xlsx("../data/suporteMilho.xlsx", sheet="Checks")
 checksCS$Esperado <- as.numeric(checksCS$Esperado)
 sinN <- readxl::read_xlsx("../data/suporteMilho.xlsx", sheet="Sinonimos")
 colnames(sinN) <- c("genotipo","Novo")
+
+# Selecionando o trait que vamos trabalhar
+tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR"),
+                          nome=c("cornStunt", "manchaFoliar", "turcicum", "manchaBranca"))
+
+selTrait <- tableTraits$nome[1]
+filterTrait <- tableTraits %>% filter(nome %in% selTrait)
+
+# Deseja filtrar para algum candidato?
+myHB <- NA # Se nao quiser candidato
+# myHB <- "6101ZL" # sequiser o 6101ZL - nao precisa escrever o nome todo
+
+## Filtrar por TPP
+myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
+myStag <- c(4,5,6) # Aqui estão todos os estagios
+allData_filter <- allData %>% filter(TPP %in% myTPP) %>% filter(stg %in% myStag)
 
 #Analisar yiedl junto?
 duasT <- "no"
@@ -148,7 +77,6 @@ limiteBaixa <- -2 #Desvio entre -2 e 0 é media pressao
 
 # quality control
 qControl <- 0.2 #trashold
-
 
 # Contador de datapoints
 # Contador de datapoints
@@ -165,8 +93,9 @@ Aqui acontece ...
 ```{r controle, echo=FALSE, warning=FALSE}
 ## Agora nao precisa mais fazer alteracoes
 # Selecionando o trait
-myDFF <- allData %>% select(local,genotipo,rep,filterTrait$codigo[1],TPP,range,row)
+myDFF <- allData_filter %>% select(local,genotipo,rep,filterTrait$codigo[1],TPP,range,row)
 colnames(myDFF)[4] <- "Nota"
+myDFF$Nota <- as.numeric(myDFF$Nota)
 
 # Removendo dados perdidos e duplicatas
 myDFF <- na.omit(myDFF)
@@ -176,8 +105,6 @@ myDF <- distinct(myDFF,local,genotipo,rep, .keep_all = TRUE)
 checksCS$Trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$Trait)
 checksF <- checksCS %>% filter(Trait %in% filterTrait$nome[1])
 
-
-library(stringi)
 # Isso roda apenas para TPP12 onde nao ha nome nos experimentos
 testeTPP12 <- nrow(myDF %>% filter(TPP=="TPP12"))
 if(testeTPP12>0){
@@ -193,30 +120,19 @@ if(testeTPP12>0){
   
   # Qualquer BU
   myTPP12$BU <- NA
-}
-
-## Contando os data points para WN = safrinha
-myDF$season <- substring(myDF$local,3,4)
-myDF <- myDF %>% filter(season %in% "WN")
-
-# capturando o estagio
-myDF$stg <- as.numeric(stri_sub(myDF$local, -7,-7))
-myDF <- myDF %>% filter(stg %in% myStag)
-
-# Capturando as BUs
-myDF$BU <- stri_sub(myDF$local, -4)
-
-if(testeTPP12>0){
+  
   myDF <- rbind(myDF,myTPP12)
 }
 
-# Contador de datapoints
-library(stringr)
 # Filtrando para um hibrido especifico... como 6101
-allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,"6101")) %>% filter(criteria == "TRUE") %>% select(!criteria)
+if(is.na(myHB)==F){
+  allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
+  tableCount <- count_fun(tableTraits,allData_hb)
+}else{
+  tableCount <- count_fun(tableTraits,allData_filter)
+}
 
-# Contador
-tableCount <- count_fun(tableTraits,allData_hb)
+# Contador apos os filtros
 knitr::kable(tableCount)
 
 ```
@@ -226,7 +142,6 @@ knitr::kable(tableCount)
 Carregando os dados e checando os nomes dos genótipo, checks, locais.
 
 ```{r pressure, warnings=FALSE, echo=FALSE, include=FALSE}
-
 
 # Preparando para as analises
 # Padronizando nomes: Removendo espaços e passando para maiusculas
