@@ -85,3 +85,24 @@ parsing_data <- function(stageData, nomes_entrada){
   stageOut <- stageData %>% select(year, local, plotName, Rep, genotipo, Nota, yield)
   filter_locais(stageOut)
 }
+
+
+count_fun <- function(inTable,inData){
+
+  for(i in 1:length(inTable$codigo)){
+    # i=1
+    dataPoint <- inData %>% select(inTable$codigo[i], BU, local)
+    dataPoint <- na.omit(dataPoint)
+    trt <- nrow(dataPoint)
+    inTable$dataPoints[i] <- trt
+    inTable$BU[i] <- length(unique(dataPoint$BU))
+    inTable$experimentos[i] <- length(unique(dataPoint$local))
+  }
+
+  # Adicionando uma linha com os totais:
+  inTable[nrow(inTable)+1,] <- c("Total","Total",sum(inTable$dataPoints),
+                                           sum(inTable$BU),sum(inTable$experimentos))
+
+  return(inTable)
+}
+
