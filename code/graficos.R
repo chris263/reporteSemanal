@@ -10,10 +10,10 @@ require(ggplot2)
 
 # install.packages("geobr")
 # library(brazilmaps)
-library(geobr)
+# require(geobr)
 library(sf)
-library(maptools)
-library(leaflet)
+# library(maptools)
+# library(leaflet)
 
 theme_set(theme_bw())
 
