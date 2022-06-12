@@ -72,14 +72,15 @@ allData_filter <- allData %>% filter(TPP %in% myTPP) %>% filter(stg %in% myStag)
 duasT <- "no"
 
 #limites
-limiteAlta <- -2 #Desvio a partir de 0 passa a ser alta
-limiteBaixa <- -4 #Desvio entre -2 e 0 é media pressao
+limiteAlta <- 0 #Desvio a partir de 0 passa a ser alta
+limiteBaixa <- -2 #Desvio entre -2 e 0 é media pressao
 
 # quality control
 qControl <- 0.2 #trashold
 
 # Contador de datapoints
-dataPointsTable<- count_fun(tableTraits,allData) # arquivo parseCS.R
+# Contador de datapoints
+dataPointsTable<- count_fun(tableTraits,allData)
 knitr::kable(dataPointsTable)
 
 
@@ -97,7 +98,7 @@ colnames(myDFF)[4] <- "Nota"
 myDFF$Nota <- as.numeric(myDFF$Nota)
 
 # Removendo dados perdidos e duplicatas
-# myDFF <- na.omit(myDFF)
+myDFF <- na.omit(myDFF)
 myDF <- distinct(myDFF,local,genotipo,rep, .keep_all = TRUE)
 
 # Preparando os checks

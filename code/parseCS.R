@@ -165,11 +165,14 @@ parsing_data <- function(stageData, nomes_entrada){
 
 
 count_fun <- function(inTable,inData){
+  # inTable = tableTraits
+  # inData = allData
 
   for(i in 1:length(inTable$codigo)){
     # i=1
-    dataPoint <- inData %>% select(inTable$codigo[i], BU, local)
+    dataPoint <- inData %>% select(inTable$codigo[i], BU, local, genotipo,rep)
     dataPoint <- na.omit(dataPoint)
+    dataPoint <- distinct(dataPoint,local,genotipo,rep, .keep_all = TRUE)
     trt <- nrow(dataPoint)
     inTable$dataPoints[i] <- trt
     inTable$BU[i] <- length(unique(dataPoint$BU))

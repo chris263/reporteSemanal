@@ -15,13 +15,13 @@ library(sf)
 # library(maptools)
 # library(leaflet)
 
-# theme_set(theme_bw())
+theme_set(theme_bw())
 
 # mapa <- brazilmaps::get_brmap("State")
 
-# mapa <- read_state(showProgress = FALSE)
+mapa <- read_state(showProgress = FALSE)
 
-# class(mapa)
+class(mapa)
 
 
 makeG0 <- function(inGraph0, fonte, item){
