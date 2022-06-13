@@ -43,7 +43,7 @@ local_blup <- function(inLocal, crt4){
 
 
   for(i in 1:length(inLocal)){
-    # i=108
+    i=1
     BLUPN <- c()
     BLUEY <- c()
     selectedLoc <- myDF%>%filter(local==inLocal[i])

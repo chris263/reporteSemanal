@@ -45,7 +45,7 @@ print("Confirme os nomes dos arquivos lidos. Esta faltando algum?")
 print(filenames)
 
 allData <- read_fun(filenames)
-
+# unique(allData$TPP)
 # Carregando arquivos auxiliares de checks e sinonimos
 checksCS <- readxl::read_xlsx("../data/suporteMilho.xlsx", sheet="Checks")
 checksCS$Esperado <- as.numeric(checksCS$Esperado)
@@ -53,8 +53,9 @@ sinN <- readxl::read_xlsx("../data/suporteMilho.xlsx", sheet="Sinonimos")
 colnames(sinN) <- c("genotipo","Novo")
 
 # Selecionando o trait que vamos trabalhar
-tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR"),
-                          nome=c("cornStunt", "manchaFoliar", "turcicum", "manchaBranca"))
+tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR"),
+                          nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
+                                 "bipolaris","ferrugem","diplodia"))
 
 selTrait <- tableTraits$nome[1]
 filterTrait <- tableTraits %>% filter(nome %in% selTrait)
@@ -65,8 +66,9 @@ myHB <- NA # Se nao quiser candidato
 
 ## Filtrar por TPP
 myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
+myTPP = "TPP12"
 myStag <- c(4,5,6) # Aqui estão todos os estagios
-allData_filter <- allData %>% filter(TPP %in% myTPP) %>% filter(stg %in% myStag)
+allData_filter <- allData %>% filter(TPP %in% myTPP) 
 
 #Analisar yiedl junto?
 duasT <- "no"
@@ -81,7 +83,7 @@ qControl <- 0.2 #trashold
 # Contador de datapoints
 dataPointsTable<- count_fun(tableTraits,allData) # arquivo parseCS.R
 knitr::kable(dataPointsTable)
-
+makePie(dataPointsTable)
 
 ```
 
@@ -90,22 +92,8 @@ knitr::kable(dataPointsTable)
 Aqui acontece ...
 
 ```{r controle, echo=FALSE, warning=FALSE}
-## Agora nao precisa mais fazer alteracoes
-# Selecionando o trait
-myDFF <- allData_filter %>% select(local,genotipo,rep,filterTrait$codigo[1],TPP,range,row)
-colnames(myDFF)[4] <- "Nota"
-myDFF$Nota <- as.numeric(myDFF$Nota)
-
-# Removendo dados perdidos e duplicatas
-# myDFF <- na.omit(myDFF)
-myDF <- distinct(myDFF,local,genotipo,rep, .keep_all = TRUE)
-
-# Preparando os checks
-checksCS$Trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$Trait)
-checksF <- checksCS %>% filter(Trait %in% filterTrait$nome[1])
-
-# Isso roda apenas para TPP12 onde nao ha nome nos experimentos
-testeTPP12 <- nrow(myDF %>% filter(TPP=="TPP12"))
+myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1])
+testeTPP12 <- nrow( myDF[myDF$TPP %in% "TPP12",])
 if(testeTPP12>0){
   
   myTPP12 <- myDF %>% filter(TPP=="TPP12")
@@ -121,7 +109,15 @@ if(testeTPP12>0){
   myTPP12$BU <- NA
   
   myDF <- rbind(myDF,myTPP12)
+}else{
+  myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag)
 }
+
+myDF$Nota <- as.numeric(myDF$Nota)
+
+# Preparando os checks
+checksCS$Trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$Trait)
+checksF <- checksCS %>% filter(Trait %in% filterTrait$nome[1])
 
 # Filtrando para um hibrido especifico... como 6101
 if(is.na(myHB)==F){
@@ -133,7 +129,6 @@ if(is.na(myHB)==F){
 
 # Contador apos os filtros
 knitr::kable(tableCount)
-
 ```
 
 ## Preparando para as analises
@@ -210,6 +205,10 @@ dfLocal <- entradasLoc$local
 aqui tambem acontecem coisas...
 
 ```{r classLoc, include=TRUE, warning=FALSE}
+
+max(myDF$Nota, na.rm = T)
+min(myDF$Nota, na.rm = T)
+
 # Rodar lme4 para BLUE e Herdabilidade para cada local
 BLUEs <- local_blup(dfLocal,duasT) # arquivo selectionIndex.R
 
@@ -287,12 +286,12 @@ modelo1 <- joint_blup(altaPP, "no") # yes = local efeito fixo, no = local nao en
 DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
 
 # 
-# if(length(locAlta)>0){
-#   genoAlta <- BLUEs %>% filter(local %in% locAlta$Local)
-#   DT::datatable(genoAlta, options=list(search=list(regex=TRUE, search = '')))
-#   write.csv(genoAlta,"data/genotiposClasses.csv", row.names = F)
-# 
-# }
+if(length(locAlta)>0){
+  genoAlta <- BLUEs %>% filter(local %in% locAlta$Local)
+  DT::datatable(genoAlta, options=list(search=list(regex=TRUE, search = '')))
+  # write.csv(genoAlta,"data/genotiposClasses.csv", row.names = F)
+
+}
 
 
 ```
@@ -308,10 +307,7 @@ Aqui acontece o calculo de medias.
 # 
 makeHM(myDF,locAlta$Local[1])
 # 
-# 
-# unique(myDF$local)
-# 
-# max(myDF$Nota,na.rm=T)
+
 # 
 # 
 meanData <- data.frame(tapply(myDF$Nota,myDF$genotipo,mean,rm.na=T))

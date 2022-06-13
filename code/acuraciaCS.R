@@ -10,8 +10,10 @@ classLocations <- function(preAll, checks){
 
 
   # myCheck <- unique(checks$genotipo)
-  preCheck <- preAll %>% filter(genotipo %in% checks$genotipo)
+  preCheck <- preAll %>% filter(genotipo %in% checks$Genotipo)
   myCheck <- unique(preCheck$genotipo)
+
+  if(length(myCheck)==0){stop("Nao foram encontrados checks :-( ")}
 
   # Separando os que nao sao checks
   nonCheck <- preAll%>%filter(!genotipo %in% myCheck)

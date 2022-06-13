@@ -12,15 +12,19 @@ read_fun <- function(inLista){
                           HELMR=NA,
                           GRLSR=NA,
                           LFSPR=NA,
+                          SCLBR=NA,
+                          SRSTR=NA,
+                          DLLFR=NA,
                           range=NA,
                           row=NA,
                           BU=NA,
                           stg=NA,
-                          season=NA
-                          )
+                          season=NA,
+                          barcode=NA
+  )
 
   for(i in 1:length(inLista)){
-    # i=2
+    # i=7
     inFile <- inLista[i]
     # inFile <- gsub(pattern = "../",replacement = "",x = inFile,fixed = T)
 
@@ -34,15 +38,15 @@ read_fun <- function(inLista){
     nomesCol <- colnames(readData)
     if(length(nomesCol)==1){ readData <- read.csv(file=inFile, header=T, as.is=1, sep=";")}
 
-    selNames <- c("TPP","EXTID","ABBRC","PLTID","REPNO","COSTR","HELMR","GRLSR","LFSPR","STRNG","STROW")
-    checkNames <- match("TRUE",str_detect(nomesCol,paste(selNames[1:5],collapse = "|")))
+    selNames <- c("TPP","EXTID","ABBRC","PLTID","REPNO","COSTR","HELMR","GRLSR","LFSPR","SCLBR","SRSTR","DLLFR","STRNG","STROW","PSS.BARCD")
+    checkNames <- match("TRUE",str_detect(nomesCol,paste(selNames[2:5],collapse = "|")))
     if(is.na(checkNames)==T){stop("Stop! Esta faltando umas das colunas principais, checar arquivo.")}
 
     newData <- readData
 
     count = 1
     for(i in 1:length(selNames)){
-      # i=1
+      # tem que rodar o loop completo para renomear todas as colunas corretamente
       posName <- match("TRUE",str_detect(nomesCol,selNames[i]))
       if(is.na(posName==T)){
         cat("Esta faltando a coluna",selNames[i],"no arquivo", inFile ,"adicionando como NA.\n")
@@ -56,7 +60,10 @@ read_fun <- function(inLista){
     }
     newData <- newData %>% select(all_of(selNames))
 
-    colnames(newData) <- c("TPP","local","genotipo","plotID","rep","COSTR","HELMR","GRLSR","LFSPR","range","row")
+    colnames(newData) <- c("TPP","local","genotipo","plotID","rep","COSTR","HELMR",
+                           "GRLSR","LFSPR","SCLBR","SRSTR","DLLFR",
+                           "range","row","barcode")
+
     testeTPP <- str_detect(inFile,"..")
     if(testeTPP == T){
       newData$TPP <- stri_sub(inFile, 9,13)
@@ -67,11 +74,19 @@ read_fun <- function(inLista){
     newData$BU <- stri_sub(newData$local, -4) # capturando as BUs
     newData$stg <- as.numeric(stri_sub(newData$local, -7,-7))
     ## Contando os data points para WN = safrinha
-    newData$season <- substring(newData$local,3,4)
-    newData <- newData %>% filter(season %in% "WN")
+    if(unique(newData$TPP)=="TPP12"){
+      newData$season <- "WN"
+    }else{
+      newData$season <- substring(newData$local,3,4)
+      newData <- newData %>% filter(season %in% "WN")
+    }
     finalData <- rbind(finalData,newData)
   }
   finalData <- finalData[-1,]
+  finalData <- tidyr::gather(finalData, trait, Nota, COSTR:DLLFR)
+  finalData$Nota <- gsub(",", "", finalData$Nota)
+  finalData$Nota <- as.numeric(finalData$Nota)
+  finalData <- distinct(finalData, barcode, trait,.keep_all = T)
 
   return(finalData)
 
@@ -166,13 +181,14 @@ parsing_data <- function(stageData, nomes_entrada){
 
 count_fun <- function(inTable,inData){
   # inTable = tableTraits
-  # inData = allData
+  # inData = allData_filter
 
   for(i in 1:length(inTable$codigo)){
     # i=1
-    dataPoint <- inData %>% select(inTable$codigo[i], BU, local, genotipo,rep)
+    dataPoint <- inData %>% filter(trait == inTable$codigo[i]) %>%
+      select(local,genotipo,BU,barcode,rep,trait,Nota)
     dataPoint <- na.omit(dataPoint)
-    dataPoint <- distinct(dataPoint,local,genotipo,rep, .keep_all = TRUE)
+    # dataPoint <- distinct(dataPoint,barcode,trait, .keep_all = TRUE)
     trt <- nrow(dataPoint)
     inTable$dataPoints[i] <- trt
     inTable$BU[i] <- length(unique(dataPoint$BU))
@@ -181,8 +197,7 @@ count_fun <- function(inTable,inData){
 
   # Adicionando uma linha com os totais:
   inTable[nrow(inTable)+1,] <- c("Total","Total",sum(inTable$dataPoints),
-                                           sum(inTable$BU),sum(inTable$experimentos))
+                                 sum(inTable$BU),sum(inTable$experimentos))
 
   return(inTable)
 }
-
