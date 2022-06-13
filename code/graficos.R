@@ -311,3 +311,30 @@ makeHM <- function(inHM, locs){
 
 }
 
+
+makePie <- function(inTable){
+  # inTable = dataPointsTable
+
+  inTable$dataPoints <- as.numeric(inTable$dataPoints)
+  inTable <- inTable[!inTable$nome %in% "Total", ]
+
+  # Add label position
+  inTable <- inTable %>%
+    arrange(desc(nome)) %>%
+    mutate(lab.ypos = cumsum(dataPoints) - 0.5*dataPoints)
+
+
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF",
+              "#99D1E9", "#9391C9","#EEB4A7")
+
+  ggplot(inTable, aes(x = "", y = dataPoints, fill = nome)) +
+    geom_bar(width = 1, stat = "identity", color = "white") +
+    coord_polar("y", start = 0)+
+    geom_text(aes(y = lab.ypos, label = dataPoints), color = "white")+
+    scale_fill_manual(values = mycols) +
+    theme_void()
+
+
+}
+
+
