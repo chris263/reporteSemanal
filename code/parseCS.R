@@ -86,7 +86,7 @@ read_fun <- function(inLista){
   finalData <- tidyr::gather(finalData, trait, Nota, COSTR:DLLFR)
   finalData$Nota <- gsub(",", "", finalData$Nota)
   finalData$Nota <- as.numeric(finalData$Nota)
-  finalData <- distinct(finalData, barcode, trait,.keep_all = T)
+  finalData <- distinct(finalData, barcode, trait,rep,.keep_all = T)
 
   return(finalData)
 

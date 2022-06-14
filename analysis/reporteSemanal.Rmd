@@ -25,7 +25,7 @@ here::i_am("analysis/reporteSemanal.Rmd")
 ```
 
 
-```{r uploading, include=FALSE, warning=FALSE}
+```{r uploading, include=TRUE, warning=FALSE}
 set.seed(12345)
 library(dplyr)
 library(stringi)
@@ -66,7 +66,7 @@ myHB <- NA # Se nao quiser candidato
 
 ## Filtrar por TPP
 myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
-myTPP = "TPP12"
+# myTPP = "TPP12"
 myStag <- c(4,5,6) # Aqui estão todos os estagios
 allData_filter <- allData %>% filter(TPP %in% myTPP) 
 
