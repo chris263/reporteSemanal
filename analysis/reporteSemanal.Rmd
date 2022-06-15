@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ip <- installed.packages()
 packages_used <- c("grid","here","hrbrthemes","viridis","ggplot2","geobr",
                    "sf","maptools","leaflet","dplyr","tidyr","stringi",
-                   "grid","stringr","gridExtra","forcats","sommer","lme4")
+                   "grid","stringr","gridExtra","forcats","sommer","lme4", "writexl")
 
 ip <- installed.packages()
 for (package in packages_used){
@@ -36,6 +36,9 @@ source("../code/acuraciaCS.R")
 source("../code/selectionIndex.R")
 source("../code/graficos.R")
 
+# criando um nome para salvar o arquivo com os blups
+nomeSalvar <- paste0("../output/blupDoencas",Sys.Date(),".xlsx")
+nomeSalvarBU <- paste0("../output/BU_Doencas",Sys.Date(),".xlsx")
 
 ## Usar o formato csv para evitar problemas nos dados
 ## Inserir uma coluna em branco no csv
@@ -47,10 +50,12 @@ print(filenames)
 allData <- read_fun(filenames)
 # unique(allData$TPP)
 # Carregando arquivos auxiliares de checks e sinonimos
-checksCS <- readxl::read_xlsx("../data/suporteMilho.xlsx", sheet="Checks")
+checksCS <- readxl::read_xlsx("../data/original_suporteMilho.xlsx", sheet="Checks")
 checksCS$Esperado <- as.numeric(checksCS$Esperado)
-sinN <- readxl::read_xlsx("../data/suporteMilho.xlsx", sheet="Sinonimos")
+sinN <- readxl::read_xlsx("../data/original_suporteMilho.xlsx", sheet="Sinonimos")
 colnames(sinN) <- c("genotipo","Novo")
+
+sinN <- distinct(sinN, genotipo,Novo)
 
 # Selecionando o trait que vamos trabalhar
 tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR"),
@@ -65,8 +70,9 @@ myHB <- NA # Se nao quiser candidato
 # myHB <- "6101ZL" # sequiser o 6101ZL - nao precisa escrever o nome todo
 
 ## Filtrar por TPP
-myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
-# myTPP = "TPP12"
+# myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
+myTPP <- c("TPP11")
+
 myStag <- c(4,5,6) # Aqui estão todos os estagios
 allData_filter <- allData %>% filter(TPP %in% myTPP) 
 
@@ -74,11 +80,11 @@ allData_filter <- allData %>% filter(TPP %in% myTPP)
 duasT <- "no"
 
 #limites
-limiteAlta <- -2 #Desvio a partir de 0 passa a ser alta
-limiteBaixa <- -4 #Desvio entre -2 e 0 é media pressao
+limiteAlta <- -0.5 #Desvio a partir de 0 passa a ser alta
+limiteBaixa <- -2 #Desvio entre -2 e 0 é media pressao
 
 # quality control
-qControl <- 0.2 #trashold
+qControl <- 0.1 #trashold
 
 # Contador de datapoints
 dataPointsTable<- count_fun(tableTraits,allData) # arquivo parseCS.R
@@ -93,6 +99,27 @@ Aqui acontece ...
 
 ```{r controle, echo=FALSE, warning=FALSE}
 myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1])
+
+# Preparando os checks
+checksCS$Trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$Trait)
+checksF <- checksCS %>% filter(Trait %in% filterTrait$nome[1])
+#Preparando o arquivo com checks
+checksF$Genotipo <- gsub(" ", "", checksF$Genotipo, fixed = TRUE)
+checksF$Genotipo <- toupper(checksF$Genotipo)
+colnames(checksF) <- c("genotipo", "Check", "Trait", "Esperado", "Tipo")
+
+checksF<-sinoFun(checksF,sinN)
+
+
+# Filtrando para um hibrido especifico... como 6101
+if(is.na(myHB)==F){
+  allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
+  tableCount <- count_fun(tableTraits,allData_hb)
+}else{
+  tableCount <- count_fun(tableTraits,allData_filter)
+}
+
+
 testeTPP12 <- nrow( myDF[myDF$TPP %in% "TPP12",])
 if(testeTPP12>0){
   
@@ -109,33 +136,26 @@ if(testeTPP12>0){
   myTPP12$BU <- NA
   
   myDF <- rbind(myDF,myTPP12)
+  myDFFF <- myDF %>% select(local,barcode,genotipo,rep,trait,Nota)
+  myDF <- na.omit(myDFFF)
 }else{
-  myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag)
+  myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag) %>%
+  select(local,barcode,genotipo,rep,trait,Nota)
+  myDF <- na.omit(myDF)
 }
 
-myDF$Nota <- as.numeric(myDF$Nota)
-
-# Preparando os checks
-checksCS$Trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$Trait)
-checksF <- checksCS %>% filter(Trait %in% filterTrait$nome[1])
-
-# Filtrando para um hibrido especifico... como 6101
-if(is.na(myHB)==F){
-  allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
-  tableCount <- count_fun(tableTraits,allData_hb)
-}else{
-  tableCount <- count_fun(tableTraits,allData_filter)
-}
+# myDF$Nota <- as.numeric(myDF$Nota)
 
 # Contador apos os filtros
-knitr::kable(tableCount)
+makePie(tableCount)
+DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
 ```
 
 ## Preparando para as analises
 
 Carregando os dados e checando os nomes dos genótipo, checks, locais.
 
-```{r pressure, warnings=FALSE, echo=FALSE, include=FALSE}
+```{r pressure, warnings=FALSE, echo=FALSE, include=TRUE}
 
 # Preparando para as analises
 # Padronizando nomes: Removendo espaços e passando para maiusculas
@@ -148,15 +168,10 @@ myDF$local <- toupper(myDF$local)
 myDF<-sinoFun(myDF,sinN) # esta no arquivo parse
 
 
-#Preparando o arquivo com checks
-checksCS$Genotipo <- gsub(" ", "", checksCS$Genotipo, fixed = TRUE)
-checksCS$Genotipo <- toupper(checksCS$Genotipo)
-colnames(checksF) <- c("genotipo", "Check", "Trait", "Esperado", "Tipo")
-
-checksF<-sinoFun(checksF,sinN)
-
 # Verificando o numero de checks utilizados
 meusChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% dplyr::select(genotipo,local)
+
+# match("TRUE",str_detect(myDF$genotipo,"30F53"))
 meusChecks <- distinct(meusChecks,genotipo,local, .keep_all = TRUE) %>% arrange(genotipo)
 
 contaChecks <- count(meusChecks, vars = genotipo)
@@ -195,7 +210,7 @@ entradasLoc %>% mutate(local=fct_reorder(local, desc(Entradas))) %>%
   theme_bw()
 
 # Filtrar por local
-entradasLoc <- entradasLoc %>% filter(Entradas>30)
+entradasLoc <- entradasLoc %>% filter(Entradas>30, Entradas<500)
 dfLocal <- entradasLoc$local
 
 ```
@@ -210,8 +225,8 @@ max(myDF$Nota, na.rm = T)
 min(myDF$Nota, na.rm = T)
 
 # Rodar lme4 para BLUE e Herdabilidade para cada local
-BLUEs <- local_blup(dfLocal,duasT) # arquivo selectionIndex.R
-
+BLUEs <- local_blup(dfLocal,duasT, myDF) # arquivo selectionIndex.R
+ 
 # Classificando como alta - media - baixa pressao
 classifica <- classLocations(BLUEs, checksF) # arquivo acuracia.R
 classifica$Local <- as.character(classifica$Local)
@@ -230,8 +245,8 @@ if(duasT=="no"){
 # Indice de qualidade/Acuracia
 finalTabela <- finalClass(novaTabela, qControl, limiteAlta, limiteBaixa)
 finalTabela2 <- finalTabela %>% dplyr::select(Local,classe,Controles,Desvio, Acuracia) %>% arrange(desc(Desvio))# Pode Adicionar Acuracia 
-knitr::kable(finalTabela2)
-# DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
+# knitr::kable(finalTabela2)
+DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
 ```
 
 
@@ -279,13 +294,6 @@ altaPP <- myDF %>% filter(local %in% locAlta$Local)
 modelo1 <- joint_blup(altaPP, "no") # yes = local efeito fixo, no = local nao entra como efeito
 
 
-# finalBLUP <- calc_blups(modelo1,"no") # yes = yield e nota juntos. no = apenas nota
-
-# finalTabela2$classe[finalTabela2$Local%in%novoLoc] <- "Alta"
-
-DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
-
-# 
 if(length(locAlta)>0){
   genoAlta <- BLUEs %>% filter(local %in% locAlta$Local)
   DT::datatable(genoAlta, options=list(search=list(regex=TRUE, search = '')))
@@ -305,23 +313,113 @@ Aqui acontece o calculo de medias.
 
 
 # 
-makeHM(myDF,locAlta$Local[1])
+# makeHM(myDF,locAlta$Local[1])
 # 
 
-# 
-# 
-meanData <- data.frame(tapply(myDF$Nota,myDF$genotipo,mean,rm.na=T))
-meanData$genotipo <- rownames(meanData)
-colnames(meanData)[1]<-"nota"
+listTraits <- unique(allData_filter$trait)
+listTraits <- listTraits[!(listTraits=="COSTR")] # Removendo Corn Stunt
 
-meanData <- na.omit(meanData)
+dataMedia <- data.frame(genotipo=NA,stage=NA,trait=NA,blupNota=NA,sdErr=NA)
+dataBU <- data.frame(genotipo=NA,BU=NA, stage=NA,trait=NA,Nota=NA)
 
 
-meanData
-# 
-# write.csv(meanData,"data/turcicumTPP09.csv", row.names = F)
-# 
+for(j in 1:length(listTraits)){
+  j=1
+  
+  filterMean <- allData_filter %>% filter(trait %in% listTraits[j]) %>%
+    select(TPP,stg,local,BU,genotipo,barcode,rep,Nota)
+  
+  filterMean$stg <- gsub(8,6,filterMean$stg)
+  filterMean$stg <- gsub("L",4,filterMean$stg)
+  
+  filterMean <- na.omit(filterMean)
+  filterMean$Nota <- as.numeric(filterMean$Nota)
+  locMean <- data.frame(tapply(filterMean$Nota,list(filterMean$local,filterMean$stg), mean, na.rm=T))
+  locMean$experimento <- row.names(locMean)
+  
+  locCols <- colnames(locMean)
+  locCols <- locCols[!(locCols=="experimento")]
+  locMean$local <- row.names(locMean)
+  
+  
+  if(length(locCols)==0){cat("Saltando trait", listTraits[j],"\n"); next}
+  for(i in 1:length(locCols)){
+    i=1
+    # cat(listTraits[j]," ",locCols[i],"\n")
+    selLocMean <- locMean[,match(c("local",locCols[i]),colnames(locMean))]
+    selLocMean <- selLocMean %>% arrange(desc(selLocMean[2]))
+    selLocMean <- na.omit(selLocMean)
+    topLoc <- selLocMean[selLocMean[2]>=3,1]
+    
+    # Calculando o desvio padrao
+    filterMean2 <- filterMean %>% filter(local %in% topLoc)
+    
+    # Media por local
+    mediaBU <- data.frame(tapply(filterMean2$Nota,list(filterMean2$genotipo,filterMean2$BU), mean, na.rm=T))
+    mediaBU$genotipo <- row.names(mediaBU)
+    colunasMedia <- colnames(mediaBU)
+    mediaBUF <- tidyr::gather(mediaBU, BU, Nota, colunasMedia[1]:colunasMedia[length(colunasMedia)-1])
+    mediaBUF$trait <- listTraits[j]
+    mediaBUF$stage <- locCols[i]
+    mediaBUF <- mediaBUF %>% select(genotipo,BU, stage,trait,Nota)
+    
+    # summary(modelo2)
+    # outHSD<- HSD.test(modelo2, "genotipo",console=FALSE, group=FALSE, unbalanced = TRUE)
+    
+    
+    checkModel = 0
+    if(length(unique(filterMean2$local))>1 & length(unique(filterMean2$rep))>1){
+      modelo2 <- aov(Nota~genotipo+local+rep, data = filterMean2)
+      modeloLocalM <- lmer(Nota~local+rep+(1|genotipo), data=filterMean2)
+      checkModel = 1
+    }else if(length(unique(filterMean2$local))>1 & length(unique(filterMean2$rep))==1){
+      modelo2 <- aov(Nota~genotipo+local, data = filterMean2)
+      modeloLocalM <- lmer(Nota~local+(1|genotipo), data=filterMean2)
+      checkModel = 1
+    }else if(length(unique(filterMean2$local))==1 & length(unique(filterMean2$rep))>1){
+      modelo2 <- aov(Nota~genotipo+rep, data = filterMean2)
+      modeloLocalM <- lmer(Nota~rep+(1|genotipo), data=filterMean2)
+      checkModel =1
+    }else if(length(unique(filterMean2$local))==1 & length(unique(filterMean2$rep))==1){
+       dataFinal = data.frame(genotipo=filterMean2$genotipo,stage=locCols[i],
+                              trait=listTraits[j],blupNota=filterMean2$Nota,sdErr=0)
+   }
+    
+    if(checkModel == 1 ){
+      # Extraindo os blups
+      adjMean = coef(modeloLocalM)$genotipo
+      adjMean = adjMean[1]
+      adjMean$genotipo <- row.names(adjMean)
+      sdErr <- as.data.frame(sqrt(diag(vcov(modelo2, full = TRUE))))
+      colnames(sdErr)[1] <- "sdErr"
+      sdErr$geno <- row.names(sdErr)
+      sdErr$geno <- gsub("genotipo","",sdErr$geno)
+      
+      # juntando o DF final
+      dataFinal <- left_join(adjMean,sdErr,by=c("genotipo"="geno"))
+      dataFinal$sdErr[1] <- sdErr$sdErr[1]
+      colnames(dataFinal)[1] <- "blupNota"
+      dataFinal$trait <- listTraits[j]
+      dataFinal$stage <- locCols[i]
+    }
+    
+    dataFinal <- dataFinal %>% arrange(desc(blupNota)) %>% select(genotipo,stage,trait,blupNota,sdErr)
+    dataMedia <- rbind(dataMedia,dataFinal)
+    dataBU <- rbind(dataBU,mediaBUF)
+  
+  }
 
+  
+}
+# dataMedia <- na.omit(dataMedia)
+dataMedia <- dataMedia[-1,]
+dataBU <- dataBU[-1,]
+dataMedia$stage <- gsub("X","",dataMedia$stage)
+dataBU$stage <- gsub("X","",dataBU$stage)
+
+# salvando em excel
+writexl::write_xlsx(dataMedia,nomeSalvar)
+writexl::write_xlsx(dataBU,nomeSalvarBU)
 
 ```
 

@@ -29,9 +29,10 @@ cleaning_data <- function(inFile, crit){
 
 }
 
-local_blup <- function(inLocal, crt4){
-   # inLocal = dfLocal
-   # crt4="no"
+local_blup <- function(inLocal, crt4,inDFF){
+  # inLocal = dfLocal
+  # crt4="no"
+  # inDFF <- myDF
 
    resumoLoc <- data.frame(local = c(1:length(dfLocal)),H2N=rep(0,length(dfLocal)),
                            H2Y=rep(0,length(dfLocal)),Acuracia=rep(0,length(dfLocal)))
@@ -43,11 +44,15 @@ local_blup <- function(inLocal, crt4){
 
 
   for(i in 1:length(inLocal)){
-    i=1
+    # i=1
     BLUPN <- c()
     BLUEY <- c()
-    selectedLoc <- myDF%>%filter(local==inLocal[i])
+    selectedLoc <- inDFF%>%filter(local==inLocal[i])
+    selectedLoc$Nota <- as.numeric(selectedLoc$Nota)
 
+    testeNota <- sum(selectedLoc$Nota, na.rm = T)
+
+    if(testeNota == 0 | is.na(testeNota) == T){cat("Local", i," ", inLocal[i], "sem notas.\n");next}
     # selectedLoc <- myDF%>%filter(local=="21WNBPEYG6J1BT122021")
 
     testeY <- sum(selectedLoc$yield)
@@ -68,7 +73,7 @@ local_blup <- function(inLocal, crt4){
     testeRep <- is.na(nReps)
     if(testeRep == T){ selectedLoc$Rep <- 1}
 
-    colnames(selectedLoc)[4]<-"Nota"
+    # colnames(selectedLoc)[4]<-"Nota"
     testeVAR <- var(selectedLoc$Nota, na.rm=T)
     checkVar <- is.na(testeVAR)
     if(checkVar==T){next}
@@ -87,7 +92,7 @@ local_blup <- function(inLocal, crt4){
     }else{
 
       selectedLoc$rep <- as.factor(selectedLoc$rep)
-      if(unique(selectedLoc$rep) == 1){
+      if(length(unique(selectedLoc$rep)) == 1){
         try(modeloLocalN <- lmer(Nota~1+(1|genotipo), data=selectedLoc), silent = T)
       }else{
         try(modeloLocalN <- lmer(Nota~rep+(1|genotipo), data=selectedLoc), silent=T)

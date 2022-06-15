@@ -2,15 +2,17 @@
 classLocations <- function(preAll, checks){
   # preAll <- BLUEs
   # checks <- checksF
+  #
+  checks$genotipo <- toupper(checks$genotipo)
+  checks$genotipo <- gsub(" ","",checks$genotipo)
 
   phenoAll <- c()
   preAll <- preAll%>%mutate(Esperado = 0)
   preAll <- preAll%>%mutate(Check = 0)
   preAll <- preAll%>%mutate(Tipo="Obs")
 
-
   # myCheck <- unique(checks$genotipo)
-  preCheck <- preAll %>% filter(genotipo %in% checks$Genotipo)
+  preCheck <- preAll %>% filter(genotipo %in% checks$genotipo)
   myCheck <- unique(preCheck$genotipo)
 
   if(length(myCheck)==0){stop("Nao foram encontrados checks :-( ")}
@@ -20,7 +22,7 @@ classLocations <- function(preAll, checks){
 
   # Loop para separar por check
   for(i in 1:length(myCheck)){
-    # i=1
+    # i=6
     # cat("Genotipo ", myCheck[i], i, "\n")
     checkPheno <- preAll %>% filter(genotipo == myCheck[i])
 
@@ -125,8 +127,8 @@ classLocations <- function(preAll, checks){
 
 
 }
-
- return(classFinal)
+  classFinal <- classFinal %>% arrange(desc(Desvio))
+  return(classFinal)
 }
 
 
@@ -189,6 +191,8 @@ joint_analysis <- function(inBLUE,locP){
 
 joint_blup <- function(inData, locP){
   # inData = myDF
+  inData$Nota <- as.numeric(inData$Nota)
+
   if(locP == "yes"){
     modeloAllNota <- lmer(Nota ~  local + (1| genotipo), data = inData)
   }else{
