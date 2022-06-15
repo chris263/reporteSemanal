@@ -338,3 +338,28 @@ makePie <- function(inTable){
 }
 
 
+
+makeBar <- function(){
+  library(ggplot2)
+
+  # create dummy data
+  data <- data.frame(
+    name=letters[1:5],
+    value=sample(seq(4,15),5),
+    sd=c(1,0.2,3,2,4)
+  )
+
+
+
+  # Most basic error bar
+  ggplot(dataFinal) +
+    geom_bar( aes(x=reorder(genotipo,desc(blupNota)), y=blupNota), stat="identity", fill="skyblue", alpha=0.7) +
+    geom_errorbar( aes(x=genotipo, ymin=blupNota-sdErr, ymax=blupNota+sdErr), width=0.4, colour="orange", alpha=0.9, size=1.3)+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+}
+
+
+
+
+
+
