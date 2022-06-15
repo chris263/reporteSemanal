@@ -47,7 +47,7 @@ local_blup <- function(inLocal, crt4,inDFF){
     # i=1
     BLUPN <- c()
     BLUEY <- c()
-    selectedLoc <- inDFF%>%filter(local==inLocal[i])
+    selectedLoc <- inDFF%>%filter(BU==inLocal[i])
     selectedLoc$Nota <- as.numeric(selectedLoc$Nota)
 
     testeNota <- sum(selectedLoc$Nota, na.rm = T)

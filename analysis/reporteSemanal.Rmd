@@ -73,8 +73,10 @@ myHB <- NA # Se nao quiser candidato
 # myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
 myTPP <- c("TPP11")
 
-myStag <- c(4,5,6) # Aqui estão todos os estagios
-allData_filter <- allData %>% filter(TPP %in% myTPP) 
+# myStag <- c(4,5,6) # Aqui estão todos os estagios
+myStag <- 6
+allData_filter <- allData %>% filter(TPP %in% myTPP)
+allData_filter$stg <- gsub(8,6,allData_filter$stg) # transformando estagio 8 em 6
 
 #Analisar yiedl junto?
 duasT <- "no"
@@ -136,11 +138,11 @@ if(testeTPP12>0){
   myTPP12$BU <- NA
   
   myDF <- rbind(myDF,myTPP12)
-  myDFFF <- myDF %>% select(local,barcode,genotipo,rep,trait,Nota)
+  myDFFF <- myDF %>% select(BU,local,barcode,genotipo,rep,trait,Nota)
   myDF <- na.omit(myDFFF)
 }else{
   myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag) %>%
-  select(local,barcode,genotipo,rep,trait,Nota)
+  select(BU,local,barcode,genotipo,rep,trait,Nota)
   myDF <- na.omit(myDF)
 }
 
@@ -193,7 +195,7 @@ Mostrando o número de entradas (plots) em cada local. Locais com menos de 30 pl
 ```{r entradasLoc, echo =FALSE, warning=FALSE}
 
 # Calculando as entradas por local
-entradasLoc <- as.data.frame(tapply(myDF$genotipo, myDF$local,length))
+entradasLoc <- as.data.frame(tapply(myDF$genotipo, myDF$BU,length))
 entradasLoc <- entradasLoc %>% mutate(local = rownames(entradasLoc))
 
 colnames(entradasLoc)[1] <- "Entradas"
@@ -210,7 +212,7 @@ entradasLoc %>% mutate(local=fct_reorder(local, desc(Entradas))) %>%
   theme_bw()
 
 # Filtrar por local
-entradasLoc <- entradasLoc %>% filter(Entradas>30, Entradas<500)
+entradasLoc <- entradasLoc %>% filter(Entradas>30, Entradas<5000)
 dfLocal <- entradasLoc$local
 
 ```
@@ -260,7 +262,7 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 require(gridExtra)
 for(i in 1:length(unique(finalTabela2$Local))){
   # i=1
-  myGraph <- myDF %>% filter(local %in% finalTabela2$Local[i], genotipo %in% checksF$genotipo)
+  myGraph <- myDF %>% filter(BU %in% finalTabela2$Local[i]) %>% filter(genotipo %in% checksF$genotipo)
   p1 <- makeG0(myGraph,"genotipo","Nota")
   p2 <- makeH0(myGraph,"Nota")
   p3 <- makeG9(myGraph,c("MS","MT"))
@@ -289,7 +291,7 @@ locAlta <- finalTabela2 %>% filter(classe == "Alta") %>% dplyr::select(Local)
 
 # altaPP <- BLUEs %>% filter(local %in% locAlta$Local)
 
-altaPP <- myDF %>% filter(local %in% locAlta$Local)
+altaPP <- myDF %>% filter(BU %in% locAlta$Local)
 
 modelo1 <- joint_blup(altaPP, "no") # yes = local efeito fixo, no = local nao entra como efeito
 
