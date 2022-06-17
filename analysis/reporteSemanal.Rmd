@@ -39,6 +39,7 @@ source("../code/graficos.R")
 # criando um nome para salvar o arquivo com os blups
 nomeSalvar <- paste0("../output/blupDoencas",Sys.Date(),".xlsx")
 nomeSalvarBU <- paste0("../output/BU_Doencas",Sys.Date(),".xlsx")
+nomeClasseLocais <- paste0("../output/classesPressaoCS_",Sys.Date(),".xlsx")
 
 ## Usar o formato csv para evitar problemas nos dados
 ## Inserir uma coluna em branco no csv
@@ -70,11 +71,14 @@ myHB <- NA # Se nao quiser candidato
 # myHB <- "6101ZL" # sequiser o 6101ZL - nao precisa escrever o nome todo
 
 ## Filtrar por TPP
-# myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
-myTPP <- c("TPP11")
+myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
+# myTPP <- c("TPP11")
 
 myStag <- c(4,5,6) # Aqui estão todos os estagios
-allData_filter <- allData %>% filter(TPP %in% myTPP) 
+# myStag <- 6
+allData_filter <- allData %>% filter(TPP %in% myTPP)
+allData_filter$stg <- gsub(8,6,allData_filter$stg) # transformando estagio 8 em 6
+allData_filter$stg <- gsub("L",4,allData_filter$stg)
 
 #Analisar yiedl junto?
 duasT <- "no"
@@ -89,7 +93,7 @@ qControl <- 0.1 #trashold
 # Contador de datapoints
 dataPointsTable<- count_fun(tableTraits,allData) # arquivo parseCS.R
 knitr::kable(dataPointsTable)
-makePie(dataPointsTable)
+makePie(dataPointsTable, paste0("4,5,6"))
 
 ```
 
@@ -98,7 +102,10 @@ makePie(dataPointsTable)
 Aqui acontece ...
 
 ```{r controle, echo=FALSE, warning=FALSE}
-myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1])
+myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag) %>%
+  select(BU,local,barcode,stg,genotipo,rep,trait,Nota)
+
+myDF <- na.omit(myDF)
 
 # Preparando os checks
 checksCS$Trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$Trait)
@@ -110,45 +117,21 @@ colnames(checksF) <- c("genotipo", "Check", "Trait", "Esperado", "Tipo")
 
 checksF<-sinoFun(checksF,sinN)
 
-
 # Filtrando para um hibrido especifico... como 6101
 if(is.na(myHB)==F){
   allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
   tableCount <- count_fun(tableTraits,allData_hb)
+  DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
 }else{
-  tableCount <- count_fun(tableTraits,allData_filter)
+  for(i in 1:length(myStag)){
+    tableCount <- count_fun(tableTraits,allData_filter)
+    makePie(tableCount, myStag[i])
+    tableCount$stage <- myStag[i]
+    
+    DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
+  }
 }
 
-
-testeTPP12 <- nrow( myDF[myDF$TPP %in% "TPP12",])
-if(testeTPP12>0){
-  
-  myTPP12 <- myDF %>% filter(TPP=="TPP12")
-  
-  # Acreditando que a season esta certa
-  myTPP12$season <- "WN"
-  
-  # capturando o estagio
-  myTPP12$stg <- as.numeric(stri_sub(myTPP12$local, -3,-3))
-  myTPP12 <- myTPP12 %>% filter(stg %in% myStag)
-  
-  # Qualquer BU
-  myTPP12$BU <- NA
-  
-  myDF <- rbind(myDF,myTPP12)
-  myDFFF <- myDF %>% select(local,barcode,genotipo,rep,trait,Nota)
-  myDF <- na.omit(myDFFF)
-}else{
-  myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag) %>%
-  select(local,barcode,genotipo,rep,trait,Nota)
-  myDF <- na.omit(myDF)
-}
-
-# myDF$Nota <- as.numeric(myDF$Nota)
-
-# Contador apos os filtros
-makePie(tableCount)
-DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
 ```
 
 ## Preparando para as analises
@@ -191,27 +174,48 @@ knitr::kable(contaChecks)
 Mostrando o número de entradas (plots) em cada local. Locais com menos de 30 plots avaliados não entram na análise pois já indica que a área não apresenta pressão para ser avaliada.
 
 ```{r entradasLoc, echo =FALSE, warning=FALSE}
+dfLocal <- data.frame(local=NA,stage=NA)
+dfTrial <- data.frame(local=NA,stage=NA)
+for(i in 1:length(myStag)){
+  # i=1
+  myDF2 <- myDF %>% filter(stg==myStag[i])
+  # Calculando as entradas por local
+  entradasLoc <- as.data.frame(tapply(myDF2$genotipo, myDF2$BU,length))
+  entradasTrial <- as.data.frame(tapply(myDF2$genotipo, myDF2$local,length))
+  
+  entradasLoc <- entradasLoc %>% mutate(local = rownames(entradasLoc))
+  entradasTrial <- entradasTrial %>% mutate(local = rownames(entradasTrial))
+  
+  colnames(entradasLoc)[1] <- "Entradas"
+  entradasLoc <- entradasLoc %>% arrange(Entradas)
+  
+  colnames(entradasTrial)[1] <- "Entradas"
+  entradasTrial <- entradasTrial %>% arrange(Entradas)
+  # entradasLoc <- na.omit(entradasLoc)
+  require(forcats)
+  library(ggplot2)
+  # Filtrar por local
+  entradasLoc <- entradasLoc %>% filter(Entradas>30, Entradas<3000)
+  entradasTrial <- entradasTrial %>% filter(Entradas>30, Entradas<300)
+  
+  predfLocal <- data.frame(local=entradasLoc$local,stage=myStag[i])
+  predfTrial <- data.frame(local=entradasTrial$local,stage=myStag[i])
+  
+  dfLocal <- rbind(dfLocal,predfLocal)
+  dfTrial <- rbind(dfTrial,predfTrial)
+  
+  pc <- makePlots(entradasLoc,myStag[i])
+  print(pc)
+  
+  pcT <- makePlots(entradasTrial,myStag[i])
+  print(pcT)
+}
 
-# Calculando as entradas por local
-entradasLoc <- as.data.frame(tapply(myDF$genotipo, myDF$local,length))
-entradasLoc <- entradasLoc %>% mutate(local = rownames(entradasLoc))
-
-colnames(entradasLoc)[1] <- "Entradas"
-entradasLoc <- entradasLoc %>% arrange(Entradas)
-# entradasLoc <- na.omit(entradasLoc)
-require(forcats)
-library(ggplot2)
+dfLocal <- na.omit(dfLocal)
+dfTrial <- na.omit(dfTrial)
 
 # Reorder following the value of another column:
-entradasLoc %>% mutate(local=fct_reorder(local, desc(Entradas))) %>% 
-  ggplot( aes(x=local, y=Entradas)) +
-  geom_bar(stat="identity", fill="#f68060", alpha=.6, width=.4) + coord_flip() +
-  xlab("Locais") + ylab("Numero de Entradas") +
-  theme_bw()
 
-# Filtrar por local
-entradasLoc <- entradasLoc %>% filter(Entradas>30, Entradas<500)
-dfLocal <- entradasLoc$local
 
 ```
 
@@ -221,20 +225,68 @@ aqui tambem acontecem coisas...
 
 ```{r classLoc, include=TRUE, warning=FALSE}
 
-max(myDF$Nota, na.rm = T)
-min(myDF$Nota, na.rm = T)
+# max(myDF$Nota, na.rm = T)
+# min(myDF$Nota, na.rm = T)
 
 # Rodar lme4 para BLUE e Herdabilidade para cada local
-BLUEs <- local_blup(dfLocal,duasT, myDF) # arquivo selectionIndex.R
- 
-# Classificando como alta - media - baixa pressao
-classifica <- classLocations(BLUEs, checksF) # arquivo acuracia.R
-classifica$Local <- as.character(classifica$Local)
-resumoLoc$local <- as.character(resumoLoc$local)
+BLUEs <- data.frame(genotipo=NA,local=NA,blueN=NA,stage=NA, type=NA)
+classificaF <- data.frame(Local=NA,classe=NA,Probabilidade=NA,Controles=NA,Desvio=NA,stage=NA, type=NA)
+resumoLocF <- data.frame(local=NA,H2N=NA,H2Y=NA,Acuracia=NA,stage=NA, type=NA)
+
+for(i in 1:length(myStag)){
+  # i=1
+  posDfLocal <- dfLocal %>% filter(stage == myStag[i])
+  posDfTrial <- dfTrial %>% filter(stage == myStag[i])
+  
+  myDFB <- myDF %>% filter(stg %in% myStag[i])
+  
+  preBLUEs_BU <- local_blup(posDfLocal$local,duasT, myDFB, "BU") #  arquivo selectionIndex.R
+  resumoBU <- resumoLoc
+  resumoBU <- resumoBU %>% mutate(stage=myStag[i],type="BU")
+  
+  preBLUEs_Trial <- local_blup(posDfTrial$local,duasT, myDFB, "trial")  
+  resumoTrial <- resumoLoc
+  resumoTrial <- resumoTrial %>% mutate(stage=myStag[i],type="trial")
+  
+  resumoLocF <- rbind(resumoLocF,resumoBU,resumoTrial)
+  
+  preBLUEs_BU <- preBLUEs_BU %>% mutate(stage=myStag[i],type="BU")
+  preBLUEs_Trial <- preBLUEs_Trial %>% mutate(stage=myStag[i],type="trial")
+  
+  BLUEs <- rbind(BLUEs,preBLUEs_BU,preBLUEs_Trial)
+  
+  # Classificando como alta - media - baixa pressao
+  classifica_BU <- classLocations(preBLUEs_BU, checksF) # arquivo acuracia.R
+  classifica_BU$Local <- as.character(classifica_BU$Local)
+  classifica_BU <- classifica_BU %>% mutate(stage = myStag[i], type="BU")
+  
+  classifica_Trial <- classLocations(preBLUEs_Trial, checksF) # arquivo acuracia.R
+  classifica_Trial$Local <- as.character(classifica_Trial$Local)
+  classifica_Trial <- classifica_Trial %>% mutate(stage = myStag[i], type="trial")
+
+  classificaF <- rbind(classificaF,classifica_BU,classifica_Trial)
+  
+}
+
+
+resumoLocF <- na.omit(resumoLocF)
+classificaF <- na.omit(classificaF)
+BLUEs <- na.omit(BLUEs)
+
+classifica_BU <- classificaF %>% filter(type=="BU")
+classifica_Trial <- classificaF %>% filter(type=="trial")
 
 # Juntando com os dados de Herdabilidade
-novaTabela <- left_join(classifica,resumoLoc,by=c("Local"="local"))
+novaTabela_BU <- left_join(classifica_BU,resumoBU,by=c("Local"="local"))
+novaTabela_Trial <- left_join(classifica_Trial,resumoTrial,by=c("Local"="local"))
+
+novaTabela <- rbind(novaTabela_BU,novaTabela_Trial)
 novaTabela$Desvio <- round(novaTabela$Desvio,3)
+novaTabela <- novaTabela %>% select(Local, classe, Probabilidade, Controles, Desvio,stage.x,
+                                    type.x,H2N,H2Y,Acuracia)
+colnames(novaTabela) <- c("Local","classe","Probabilidade","Controles","Desvio",
+                          "stage","type","H2N","H2Y","Acuracia")
+
 if(duasT=="no"){
   novaTabela$Acuracia <- round((novaTabela$Probabilidade+novaTabela$H2N)/2,3)
 }else{
@@ -243,10 +295,27 @@ if(duasT=="no"){
 
 
 # Indice de qualidade/Acuracia
-finalTabela <- finalClass(novaTabela, qControl, limiteAlta, limiteBaixa)
-finalTabela2 <- finalTabela %>% dplyr::select(Local,classe,Controles,Desvio, Acuracia) %>% arrange(desc(Desvio))# Pode Adicionar Acuracia 
+finalTabela <- finalClass(novaTabela, qControl, limiteAlta, limiteBaixa) # arquivo acuracia.R
+novaTabelaBUU <- novaTabela %>% filter(type=="BU")
+novaTabelaTTrial <- novaTabela %>% filter(type=="trial")
+
+finalTabelaBU <- finalClass(novaTabelaBUU, qControl, limiteAlta, limiteBaixa)
+finalTabelaTrial <- finalClass(novaTabelaTTrial, qControl, limiteAlta, limiteBaixa)
+
+
+finalTabela2 <- finalTabela %>% dplyr::select(Local,classe,stage,Controles,Desvio,Acuracia) %>% arrange(desc(Desvio))# Pode Adicionar Acuracia 
 # knitr::kable(finalTabela2)
-DT::datatable(finalTabela2, options=list(search=list(regex=TRUE, search = '')))
+DT::datatable(finalTabelaBU, options=list(search=list(regex=TRUE, search = '')))
+DT::datatable(finalTabelaTrial, options=list(search=list(regex=TRUE, search = '')))
+
+finalTabelaBU$type <- "BU"
+finalTabelaTrial$type <- "trial"
+classeFinalTrialBU <- rbind(finalTabelaBU,finalTabelaTrial)
+
+# salvando em excel
+writexl::write_xlsx(classeFinalTrialBU,nomeClasseLocais)
+
+
 ```
 
 
@@ -260,7 +329,7 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 require(gridExtra)
 for(i in 1:length(unique(finalTabela2$Local))){
   # i=1
-  myGraph <- myDF %>% filter(local %in% finalTabela2$Local[i], genotipo %in% checksF$genotipo)
+  myGraph <- myDF %>% filter(BU %in% finalTabela2$Local[i]) %>% filter(genotipo %in% checksF$genotipo)
   p1 <- makeG0(myGraph,"genotipo","Nota")
   p2 <- makeH0(myGraph,"Nota")
   p3 <- makeG9(myGraph,c("MS","MT"))
@@ -279,28 +348,43 @@ Resumo dos locais
 ```{r tabelaLoc, echo=FALSE}
 
 # 
-locAlta <- finalTabela2 %>% filter(classe == "Alta") %>% dplyr::select(Local)
+locAlta <- finalTabelaBU %>% filter(classe == "Alta") %>% dplyr::select(Local)
+trialAlta <- finalTabelaTrial %>% filter(classe == "Alta") %>% dplyr::select(Local)
 
 
+altaPPBU <- myDF %>% filter(BU %in% locAlta$Local)
+altaPPTrial <- myDF %>% filter(local %in% trialAlta$Local)
 
-# Adicionar algum local a alta pressao
-# novoLoc <- finalTabela2$Local[2]
-# locAlta <- rbind(locAlta,novoLoc)
-
-# altaPP <- BLUEs %>% filter(local %in% locAlta$Local)
-
-altaPP <- myDF %>% filter(local %in% locAlta$Local)
-
-modelo1 <- joint_blup(altaPP, "no") # yes = local efeito fixo, no = local nao entra como efeito
-
+modeloBU <- joint_blup(altaPPBU, "no") # yes = local efeito fixo, no = local nao entra como efeito
+modeloBU$type <- "BU"
+modeloTrial <- joint_blup(altaPPTrial, "no") 
+modeloTrial$type <- "trial"
 
 if(length(locAlta)>0){
-  genoAlta <- BLUEs %>% filter(local %in% locAlta$Local)
-  DT::datatable(genoAlta, options=list(search=list(regex=TRUE, search = '')))
+  genoAltaBU <- BLUEs %>% filter(type == "BU", local %in% locAlta$Local)
+  genoAltaBU$blueN <- round(genoAltaBU$blueN,2)
+  # DT::datatable(genoAlta, options=list(search=list(regex=TRUE, search = '')))
   # write.csv(genoAlta,"data/genotiposClasses.csv", row.names = F)
 
 }
 
+if(length(trialAlta)>0){
+  genoAltaTrial <- BLUEs %>% filter(type == "trial", local %in% trialAlta$Local)
+  genoAltaTrial$blueN <- round(genoAltaTrial$blueN,2)
+  # DT::datatable(genoAlta, options=list(search=list(regex=TRUE, search = '')))
+  # write.csv(genoAlta,"data/genotiposClasses.csv", row.names = F)
+
+}
+
+classeFinalGenotipos <- rbind(genoAltaBU,genoAltaTrial)
+
+# Salvando no excel
+nomeClasseGenotipos <- paste0("../output/classeGenotiposCS_",Sys.Date(),".xlsx")
+writexl::write_xlsx(classeFinalGenotipos,nomeClasseGenotipos)
+
+conjuntaGenotipos <- rbind(modeloBU,modeloTrial)
+nomeConjuntaGenotipos <- paste0("../output/conjuntaGenotiposCS_",Sys.Date(),".xlsx")
+writexl::write_xlsx(conjuntaGenotipos,nomeConjuntaGenotipos)
 
 ```
 
@@ -312,10 +396,6 @@ Aqui acontece o calculo de medias.
 ```{r heatmap, echo=F, warning=FALSE}
 
 
-# 
-# makeHM(myDF,locAlta$Local[1])
-# 
-
 listTraits <- unique(allData_filter$trait)
 listTraits <- listTraits[!(listTraits=="COSTR")] # Removendo Corn Stunt
 
@@ -324,13 +404,13 @@ dataBU <- data.frame(genotipo=NA,BU=NA, stage=NA,trait=NA,Nota=NA)
 
 
 for(j in 1:length(listTraits)){
-  j=1
+  # j=1
   
   filterMean <- allData_filter %>% filter(trait %in% listTraits[j]) %>%
     select(TPP,stg,local,BU,genotipo,barcode,rep,Nota)
   
-  filterMean$stg <- gsub(8,6,filterMean$stg)
-  filterMean$stg <- gsub("L",4,filterMean$stg)
+  # filterMean$stg <- gsub(8,6,filterMean$stg)
+  # filterMean$stg <- gsub("L",4,filterMean$stg)
   
   filterMean <- na.omit(filterMean)
   filterMean$Nota <- as.numeric(filterMean$Nota)
@@ -344,7 +424,7 @@ for(j in 1:length(listTraits)){
   
   if(length(locCols)==0){cat("Saltando trait", listTraits[j],"\n"); next}
   for(i in 1:length(locCols)){
-    i=1
+    # i=1
     # cat(listTraits[j]," ",locCols[i],"\n")
     selLocMean <- locMean[,match(c("local",locCols[i]),colnames(locMean))]
     selLocMean <- selLocMean %>% arrange(desc(selLocMean[2]))
@@ -369,15 +449,15 @@ for(j in 1:length(listTraits)){
     
     checkModel = 0
     if(length(unique(filterMean2$local))>1 & length(unique(filterMean2$rep))>1){
-      modelo2 <- aov(Nota~genotipo+local+rep, data = filterMean2)
+      # modelo2 <- aov(Nota~genotipo+local+rep, data = filterMean2)
       modeloLocalM <- lmer(Nota~local+rep+(1|genotipo), data=filterMean2)
       checkModel = 1
     }else if(length(unique(filterMean2$local))>1 & length(unique(filterMean2$rep))==1){
-      modelo2 <- aov(Nota~genotipo+local, data = filterMean2)
+      # modelo2 <- aov(Nota~genotipo+local, data = filterMean2)
       modeloLocalM <- lmer(Nota~local+(1|genotipo), data=filterMean2)
       checkModel = 1
     }else if(length(unique(filterMean2$local))==1 & length(unique(filterMean2$rep))>1){
-      modelo2 <- aov(Nota~genotipo+rep, data = filterMean2)
+      # modelo2 <- aov(Nota~genotipo+rep, data = filterMean2)
       modeloLocalM <- lmer(Nota~rep+(1|genotipo), data=filterMean2)
       checkModel =1
     }else if(length(unique(filterMean2$local))==1 & length(unique(filterMean2$rep))==1){

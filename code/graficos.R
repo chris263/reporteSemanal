@@ -284,10 +284,11 @@ makeG9 <- function(inDados,grupos){
   checksS <- checksF %>% filter(Tipo %in% grupos)
   inDados <- inDados %>% filter(genotipo %in% checksS$genotipo)
   inDados <- left_join(inDados,checksF,x.by="genotipo", y.by="genotipo")
+  inDados$Nota <- as.numeric(inDados$Nota)
 
   ggplot(inDados, aes(x=genotipo, y=Nota, fill=Tipo)) +
     geom_boxplot() +
-    ggtitle(unique(inDados$local)) +
+    ggtitle(unique(inDados$BU)) +
     ylim(0,10)+
     scale_y_continuous(breaks=seq(0.0, 10, 1), limits=c(0, 10))+
     geom_hline(yintercept=3, linetype="dashed", color = "blue", size=1.2) +
@@ -312,8 +313,9 @@ makeHM <- function(inHM, locs){
 }
 
 
-makePie <- function(inTable){
-  # inTable = dataPointsTable
+makePie <- function(inTable, inStage){
+  # inTable = tableCount
+  # inStage = 6
 
   inTable$dataPoints <- as.numeric(inTable$dataPoints)
   inTable <- inTable[!inTable$nome %in% "Total", ]
@@ -328,6 +330,7 @@ makePie <- function(inTable){
               "#99D1E9", "#9391C9","#EEB4A7")
 
   ggplot(inTable, aes(x = "", y = dataPoints, fill = nome)) +
+    ggtitle(paste0("Stage: ",inStage)) +
     geom_bar(width = 1, stat = "identity", color = "white") +
     coord_polar("y", start = 0)+
     geom_text(aes(y = lab.ypos, label = dataPoints), color = "white")+
@@ -358,7 +361,15 @@ makeBar <- function(){
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 }
 
-
+makePlots <- function(inLocDF, inStg){
+  myColor <- c("#51BD80","#574C8F","#FEA287")
+  inLocDF %>% mutate(local=fct_reorder(local, desc(Entradas))) %>%
+    ggplot( aes(x=local, y=Entradas)) +
+    ggtitle(paste0("Stage: ",inStg)) +
+    geom_bar(stat="identity", fill=myColor[inStg-3], alpha=.6, width=.4) + coord_flip() +
+    xlab("Locais") + ylab("Numero de Entradas") +
+    theme_bw()
+}
 
 
 
