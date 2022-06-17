@@ -1,8 +1,8 @@
 
 classLocations <- function(preAll, checks){
-  # preAll <- BLUEs
+  # preAll <- preBLUEs_BU
   # checks <- checksF
-  #
+
   checks$genotipo <- toupper(checks$genotipo)
   checks$genotipo <- gsub(" ","",checks$genotipo)
 
@@ -22,7 +22,7 @@ classLocations <- function(preAll, checks){
 
   # Loop para separar por check
   for(i in 1:length(myCheck)){
-    # i=6
+    # i=1
     # cat("Genotipo ", myCheck[i], i, "\n")
     checkPheno <- preAll %>% filter(genotipo == myCheck[i])
 
@@ -126,7 +126,7 @@ classLocations <- function(preAll, checks){
 
 
 
-}
+  }
   classFinal <- classFinal %>% arrange(desc(Desvio))
   return(classFinal)
 }
@@ -142,28 +142,34 @@ finalClass<- function(enterTable, qualC, limA, limB){
   outTabela <- enterTable
 
   for(i in 1:nrow(outTabela)){
-
+    # i=1
     somaDiff <- outTabela$Desvio[i]
     qc <- outTabela$Acuracia[i]
 
     if( somaDiff > limA && qc > qualC){
 
-      outTabela[i,2] <- "Alta"
+      outTabela$classe[i] <- "Alta"
 
     }else if(somaDiff > limB && somaDiff < limA){
 
-      outTabela[i,2] <- "Media"
+      outTabela$classe[i] <- "Media"
 
     }else if (somaDiff < limB) {
 
-      outTabela[i,2] <- "Baixa"
+      outTabela$classe[i] <- "Baixa"
 
     }else if(somaDiff > limA && qc < qualC){
 
-      outTabela[i,2] <- "Low QC"
+      outTabela$classe[i] <- "Low QC"
 
     }
   }
+
+  # nomesRef <- distinct(BLUEs,local,stage)
+  # outTabela2 <- left_join(outTabela,nomesRef, by=c("Local"="local"))
+  # outTabela2 <- outTabela2 %>% select(Local,stage,classe,Probabilidade,
+  #                                     Controles,Desvio,H2N,H2Y,Acuracia)
+  # outTabela2$Probabilidade <- round(outTabela2$Probabilidade,3)
 
  return(outTabela)
 

@@ -313,8 +313,9 @@ makeHM <- function(inHM, locs){
 }
 
 
-makePie <- function(inTable){
-  # inTable = dataPointsTable
+makePie <- function(inTable, inStage){
+  # inTable = tableCount
+  # inStage = 6
 
   inTable$dataPoints <- as.numeric(inTable$dataPoints)
   inTable <- inTable[!inTable$nome %in% "Total", ]
@@ -329,6 +330,7 @@ makePie <- function(inTable){
               "#99D1E9", "#9391C9","#EEB4A7")
 
   ggplot(inTable, aes(x = "", y = dataPoints, fill = nome)) +
+    ggtitle(paste0("Stage: ",inStage)) +
     geom_bar(width = 1, stat = "identity", color = "white") +
     coord_polar("y", start = 0)+
     geom_text(aes(y = lab.ypos, label = dataPoints), color = "white")+
@@ -359,7 +361,15 @@ makeBar <- function(){
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 }
 
-
+makePlots <- function(inLocDF, inStg){
+  myColor <- c("#51BD80","#574C8F","#FEA287")
+  inLocDF %>% mutate(local=fct_reorder(local, desc(Entradas))) %>%
+    ggplot( aes(x=local, y=Entradas)) +
+    ggtitle(paste0("Stage: ",inStg)) +
+    geom_bar(stat="identity", fill=myColor[inStg-3], alpha=.6, width=.4) + coord_flip() +
+    xlab("Locais") + ylab("Numero de Entradas") +
+    theme_bw()
+}
 
 
 

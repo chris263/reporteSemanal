@@ -29,13 +29,15 @@ cleaning_data <- function(inFile, crit){
 
 }
 
-local_blup <- function(inLocal, crt4,inDFF){
-  # inLocal = dfLocal
+local_blup <- function(inLocal, crt4, inDFF, inType){
+  # inLocal = posDfLocal$local
   # crt4="no"
-  # inDFF <- myDF
+  # inDFF <- myDFB
+  # inType = "BU"
 
-   resumoLoc <- data.frame(local = c(1:length(dfLocal)),H2N=rep(0,length(dfLocal)),
-                           H2Y=rep(0,length(dfLocal)),Acuracia=rep(0,length(dfLocal)))
+  inDFF$Nota <- as.numeric(inDFF$Nota)
+  resumoLoc <- data.frame(local = c(1:length(inLocal)),H2N=rep(0,length(inLocal)),
+                           H2Y=rep(0,length(inLocal)),Acuracia=rep(0,length(inLocal)))
 
 
   if(crt4 == "no"){resumoLoc[,-3]}
@@ -47,7 +49,13 @@ local_blup <- function(inLocal, crt4,inDFF){
     # i=1
     BLUPN <- c()
     BLUEY <- c()
-    selectedLoc <- inDFF%>%filter(BU==inLocal[i])
+
+    if(inType == "BU"){
+      selectedLoc <- inDFF%>%filter(BU==inLocal[i])
+    }else if(inType == "trial"){
+      selectedLoc <- inDFF%>%filter(local==inLocal[i])
+    }
+
     selectedLoc$Nota <- as.numeric(selectedLoc$Nota)
 
     testeNota <- sum(selectedLoc$Nota, na.rm = T)
