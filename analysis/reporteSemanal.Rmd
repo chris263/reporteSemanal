@@ -37,9 +37,10 @@ source("../code/selectionIndex.R")
 source("../code/graficos.R")
 
 # criando um nome para salvar o arquivo com os blups
-nomeSalvar <- paste0("../output/blupDoencas",Sys.Date(),".xlsx")
-nomeSalvarBU <- paste0("../output/BU_Doencas",Sys.Date(),".xlsx")
+nomeSalvar <- paste0("../output/blupDoencas_",Sys.Date(),".xlsx")
+nomeSalvarBU <- paste0("../output/BU_Doencas_",Sys.Date(),".xlsx")
 nomeClasseLocais <- paste0("../output/classesPressaoCS_",Sys.Date(),".xlsx")
+saveChecks <- paste0("../output/checksLoc_",Sys.Date(),".xlsx")
 
 ## Usar o formato csv para evitar problemas nos dados
 ## Inserir uma coluna em branco no csv
@@ -150,6 +151,12 @@ if(is.na(myHB)==F){
     DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
   }
 }
+
+
+fileChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% select(local,BU,genotipo)
+fileChecks <- distinct(fileChecks,genotipo,local,.keep_all = T)
+
+writexl::write_xlsx(fileChecks,saveChecks)
 
 ```
 
