@@ -134,11 +134,6 @@ if(is.na(myHB)==F){
 }
 
 
-fileChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% select(local,BU,genotipo)
-fileChecks <- distinct(fileChecks,genotipo,local,.keep_all = T)
-
-writexl::write_xlsx(fileChecks,saveChecks)
-
 ```
 
 ## Preparando para as analises
@@ -171,6 +166,12 @@ contaChecks <- contaChecks %>% arrange(desc(numeroLocais))
 checksFora <- subset(checksF,!(checksF$genotipo %in% contaChecks$check))
 knitr::kable(checksFora)
 knitr::kable(contaChecks)
+
+# salvando os checks por trial e BU
+fileChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% select(local,BU,genotipo)
+fileChecks <- distinct(fileChecks,genotipo,local,.keep_all = T)
+
+writexl::write_xlsx(fileChecks,saveChecks)
 
 
 ```
