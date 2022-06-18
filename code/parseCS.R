@@ -144,13 +144,13 @@ sinoFun <- function(myData, sinIN){
   myData$genotipo <- gsub("\\\\","_", myData$genotipo)
 
   for( i in 1:nrow(sinIN)){
-    # i=4
+    # i=90
     # print(i)
     myOld <- sinIN$genotipo[i]
     myNew <- sinIN %>% filter(genotipo == myOld) %>% dplyr::select(Novo)
     # match("TRUE", str_detect(myData$genotipo,myNew$Novo,negate = FALSE))
     pp <-str_c("\\b", myOld, "\\b", collapse="|")
-    myData$genotipo<-stringr::str_replace_all(myData$genotipo, pp, myNew$Novo)
+    try(myData$genotipo<-stringr::str_replace_all(myData$genotipo, pp, myNew$Novo),silent = T)
 
   }
   myData$genotipo <- gsub("\\_","\\\\", myData$genotipo)
