@@ -6,6 +6,7 @@ classLocations <- function(preAll, checks){
   checks$genotipo <- toupper(checks$genotipo)
   checks$genotipo <- gsub(" ","",checks$genotipo)
 
+  colnames(checks)[c(6:7)] <- c("TPP","valor")
   phenoAll <- c()
   preAll <- preAll%>%mutate(Esperado = 0)
   preAll <- preAll%>%mutate(Check = 0)
@@ -16,6 +17,7 @@ classLocations <- function(preAll, checks){
   myCheck <- unique(preCheck$genotipo)
 
   if(length(myCheck)==0){stop("Nao foram encontrados checks :-( ")}
+
 
   # Separando os que nao sao checks
   nonCheck <- preAll%>%filter(!genotipo %in% myCheck)
@@ -78,8 +80,8 @@ classLocations <- function(preAll, checks){
   # Classificando os locais
 
   for(i in 1:length(nomesLocais)){
-    # i=1
-    # cat("Local: ",i,"\n")
+    # i=8
+    # cat("Local: ",i,nomesLocais[i],"\n")
     # Filtrando por local
     selectedLocal <- phenoAll %>% filter(local == nomesLocais[i])
     classFinal$Local[i] <- nomesLocais[i]
@@ -127,6 +129,7 @@ classLocations <- function(preAll, checks){
 
 
   }
+  classFinal$TPP <- unique(selectedLocal$TPP)
   classFinal <- classFinal %>% arrange(desc(Desvio))
   return(classFinal)
 }
@@ -138,15 +141,15 @@ finalClass<- function(enterTable, qualC, limA, limB){
   # limA=limiteAlta
   # limB=limiteBaixa
 
-  enterTable <- na.omit(enterTable)
+  # enterTable <- na.omit(enterTable)
   outTabela <- enterTable
 
   for(i in 1:nrow(outTabela)){
-    # i=1
+    # i=204
     somaDiff <- outTabela$Desvio[i]
     qc <- outTabela$Acuracia[i]
 
-    if( somaDiff > limA && qc > qualC){
+    if( somaDiff > limA && qualC > qualC){
 
       outTabela$classe[i] <- "Alta"
 
@@ -158,7 +161,7 @@ finalClass<- function(enterTable, qualC, limA, limB){
 
       outTabela$classe[i] <- "Baixa"
 
-    }else if(somaDiff > limA && qc < qualC){
+    }else if(somaDiff > limA && qualC < qualC){
 
       outTabela$classe[i] <- "Low QC"
 

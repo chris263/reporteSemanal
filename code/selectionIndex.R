@@ -37,7 +37,7 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
 
   inDFF$Nota <- as.numeric(inDFF$Nota)
   resumoLoc <- data.frame(local = c(1:length(inLocal)),H2N=rep(0,length(inLocal)),
-                           H2Y=rep(0,length(inLocal)),Acuracia=rep(0,length(inLocal)))
+                           H2Y=rep(0,length(inLocal)),Acuracia=rep(0,length(inLocal)),TPP=NA)
 
 
   if(crt4 == "no"){resumoLoc[,-3]}
@@ -93,10 +93,11 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
       # Guardando os dados
       resumoLoc$local[i] <- inLocal[i]
       resumoLoc$H2N[i] <- 0
+      resumoLoc$TPP <- unique(selectedLoc$TPP)
       genotipos <- unique(selectedLoc$genotipo)
       BLUPN <- data.frame(blueN=rep(selectedLoc$Nota[1],length(genotipos)),
                                    local=rep(unique(selectedLoc$local),length(genotipos)),
-                                   genotipo=genotipos)
+                                   genotipo=genotipos,TPP=selectedLoc$TPP)
     }else{
 
       selectedLoc$rep <- as.factor(selectedLoc$rep)
@@ -145,6 +146,7 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
           resumoLoc$local[i] <- inLocal[i]
           resumoLoc$H2N[i] <- H2
           resumoLoc$H2Y[i] <- H2Y
+          resumoLoc$TPP <- unique(selectedLoc$TPP)
           # resumoLoc$Acuracia[i] <- (H2+H2Y)/2
 
           # Extraindo os blups para Yield
@@ -168,6 +170,7 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
       }else{ # caso crt5 = no
         resumoLoc$local[i] <- inLocal[i]
         resumoLoc$H2N[i] <- H2
+        resumoLoc$TPP <- unique(selectedLoc$TPP)
         # resumoLoc$Acuracia[i] <- H2
       }
 
@@ -181,13 +184,14 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
 
       locaisNome <- c(1:nrow(adj))
       BLUPN <- rbind(BLUPN,adj)
-      BLUPN <- BLUPN %>% dplyr::select(genotipo,local,blueN)
+      BLUPN$TPP <- unique(selectedLoc$TPP)
+      BLUPN <- BLUPN %>% dplyr::select(genotipo,local,blueN,TPP)
     }
     if(crt5 == "yes"){
-      preBLUE <- left_join(BLUPN, BLUEY, by=c("genotipo"="genotipo")) %>% dplyr::select(genotipo,local.x,blueN,blueY)
-      colnames(preBLUE) <- c("genotipo", "local", "blueN","blueY")
+      preBLUE <- left_join(BLUPN, BLUEY, by=c("genotipo"="genotipo")) %>% dplyr::select(genotipo,local.x,blueN,blueY,TPP)
+      colnames(preBLUE) <- c("genotipo", "local", "blueN","blueY","TPP")
       BLUEf <- rbind(BLUEf,preBLUE)
-      colnames(BLUEf) <- c("genotipo", "local", "blueN","blueY")
+      colnames(BLUEf) <- c("genotipo", "local", "blueN","blueY","TPP")
     }else{
       BLUPN$blueY <- NA
       BLUEf <- rbind(BLUEf,BLUPN)
@@ -197,15 +201,15 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
   }
 
   if(crt4 == "yes"){
-    BLUEf <- BLUEf %>% dplyr::select(genotipo, local, blueN, blueY)
-    colnames(BLUEf) <- c("genotipo", "local", "blueN","blueY")
+    BLUEf <- BLUEf %>% dplyr::select(genotipo, local, blueN, blueY,TPP)
+    colnames(BLUEf) <- c("genotipo", "local", "blueN","blueY","TPP")
   }else{
     # BLUEf <- BLUPN
     if(is.null(BLUEf)==T){
       print("No BLUE data...")
       # break
     }else{
-      try(BLUEf <- BLUEf %>% dplyr::select(genotipo,local,blueN))
+      try(BLUEf <- BLUEf %>% dplyr::select(genotipo,local,blueN,TPP))
     }
 
   }

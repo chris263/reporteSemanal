@@ -9,7 +9,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, echo = FALSE)
 ip <- installed.packages()
 packages_used <- c("grid","here","hrbrthemes","viridis","ggplot2","geobr",
                    "sf","maptools","leaflet","dplyr","tidyr","stringi",
@@ -59,6 +59,25 @@ colnames(sinN) <- c("genotipo","Novo")
 
 sinN <- distinct(sinN, genotipo,Novo)
 
+errorMessage=FALSE
+
+tryCatch(tidyr::gather(checksCS,TPP,valor,6:9),
+ error = function(e)
+ errorMessage <<- TRUE)
+
+if(errorMessage==T){
+  checksCS <- checksCS %>% mutate(TPP09=1,
+                                  TPP10=1,
+                                  TPP11=1,
+                                  TPP12=1)
+  
+  checksCS <- tidyr::gather(checksCS,TPP,valor,6:9)
+}else{
+  checksCS <- tidyr::gather(checksCS,TPP,valor,6:9)
+}
+
+
+
 # Selecionando o trait que vamos trabalhar
 tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR"),
                           nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
@@ -104,7 +123,7 @@ Aqui acontece ...
 
 ```{r controle, echo=FALSE, warning=FALSE}
 myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag) %>%
-  select(BU,local,barcode,stg,genotipo,rep,trait,Nota)
+  select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP)
 
 myDF <- na.omit(myDF)
 
@@ -152,12 +171,16 @@ myDF$local <- toupper(myDF$local)
 # Alterando os nomes de acordo com os sinonimos
 myDF<-sinoFun(myDF,sinN) # esta no arquivo parse
 
+# procurar por um nome especifico
+match("TRUE",str_detect(myDF$genotipo,"30F53VYH"))
 
 # Verificando o numero de checks utilizados
-meusChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% dplyr::select(genotipo,local)
+meusChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% dplyr::select(genotipo,local,TPP)
 
-# match("TRUE",str_detect(myDF$genotipo,"30F53"))
-meusChecks <- distinct(meusChecks,genotipo,local, .keep_all = TRUE) %>% arrange(genotipo)
+
+
+# removendo duplicatas
+meusChecks <- distinct(meusChecks,genotipo,local,TPP, .keep_all = TRUE) %>% arrange(genotipo)
 
 contaChecks <- count(meusChecks, vars = genotipo)
 colnames(contaChecks) <- c("check","numeroLocais")
@@ -184,6 +207,7 @@ Mostrando o número de entradas (plots) em cada local. Locais com menos de 30 pl
 ```{r entradasLoc, echo =FALSE, warning=FALSE}
 dfLocal <- data.frame(local=NA,stage=NA)
 dfTrial <- data.frame(local=NA,stage=NA)
+
 for(i in 1:length(myStag)){
   # i=1
   myDF2 <- myDF %>% filter(stg==myStag[i])
@@ -237,9 +261,9 @@ aqui tambem acontecem coisas...
 # min(myDF$Nota, na.rm = T)
 
 # Rodar lme4 para BLUE e Herdabilidade para cada local
-BLUEs <- data.frame(genotipo=NA,local=NA,blueN=NA,stage=NA, type=NA)
-classificaF <- data.frame(Local=NA,classe=NA,Probabilidade=NA,Controles=NA,Desvio=NA,stage=NA, type=NA)
-resumoLocF <- data.frame(local=NA,H2N=NA,H2Y=NA,Acuracia=NA,stage=NA, type=NA)
+BLUEs <- data.frame(genotipo=NA,local=NA,blueN=NA,stage=NA, type=NA,TPP=NA)
+classificaF <- data.frame(Local=NA,classe=NA,Probabilidade=NA,Controles=NA,Desvio=NA,stage=NA, type=NA,TPP=NA)
+resumoLocF <- data.frame(local=NA,H2N=NA,H2Y=NA,Acuracia=NA,TPP=NA,stage=NA, type=NA)
 
 for(i in 1:length(myStag)){
   # i=1
@@ -277,6 +301,11 @@ for(i in 1:length(myStag)){
 }
 
 
+
+listLocTPP <- allData_filter %>% filter(TPP %in% myTPP) %>% select(BU,local,TPP)
+listLocBU <- distinct(listLocTPP, BU,TPP)
+listLocTrial <- distinct(listLocTPP, local,TPP)
+
 resumoLocF <- na.omit(resumoLocF)
 classificaF <- na.omit(classificaF)
 BLUEs <- na.omit(BLUEs)
@@ -285,8 +314,8 @@ classifica_BU <- classificaF %>% filter(type=="BU")
 classifica_Trial <- classificaF %>% filter(type=="trial")
 
 # Juntando com os dados de Herdabilidade
-novaTabela_BU <- left_join(classifica_BU,resumoBU,by=c("Local"="local"))
-novaTabela_Trial <- left_join(classifica_Trial,resumoTrial,by=c("Local"="local"))
+novaTabela_BU <- left_join(classifica_BU,resumoBU,by=c("Local"="local")) 
+novaTabela_Trial <- left_join(classifica_Trial,resumoBU,by=c("Local"="local")) 
 
 novaTabela <- rbind(novaTabela_BU,novaTabela_Trial)
 novaTabela$Desvio <- round(novaTabela$Desvio,3)
@@ -335,7 +364,8 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 
 
 require(gridExtra)
-for(i in 1:length(unique(finalTabela2$Local))){
+# for(i in 1:length(unique(finalTabela2$Local))){
+for(i in 1:2){
   # i=1
   myGraph <- myDF %>% filter(BU %in% finalTabela2$Local[i]) %>% filter(genotipo %in% checksF$genotipo)
   p1 <- makeG0(myGraph,"genotipo","Nota")
