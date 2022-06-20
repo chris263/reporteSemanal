@@ -141,15 +141,15 @@ finalClass<- function(enterTable, qualC, limA, limB){
   # limA=limiteAlta
   # limB=limiteBaixa
 
-  enterTable <- na.omit(enterTable)
+  # enterTable <- na.omit(enterTable)
   outTabela <- enterTable
 
   for(i in 1:nrow(outTabela)){
-    # i=1
+    # i=204
     somaDiff <- outTabela$Desvio[i]
     qc <- outTabela$Acuracia[i]
 
-    if( somaDiff > limA && qc > qualC){
+    if( somaDiff > limA && qualC > qualC){
 
       outTabela$classe[i] <- "Alta"
 
@@ -161,7 +161,7 @@ finalClass<- function(enterTable, qualC, limA, limB){
 
       outTabela$classe[i] <- "Baixa"
 
-    }else if(somaDiff > limA && qc < qualC){
+    }else if(somaDiff > limA && qualC < qualC){
 
       outTabela$classe[i] <- "Low QC"
 
