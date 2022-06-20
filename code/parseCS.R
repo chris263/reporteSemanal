@@ -134,8 +134,8 @@ filter_locais <- function(inLoc, stg, yrs, crt5, minEnter, maxEnter,inSea){
 
 sinoFun <- function(myData, sinIN){
   require(stringr)
-  # sinIN <- sinN
-  # myData <- checksF
+  sinIN <- sinN
+  myData <- checksF
 
   sinIN$Novo <- gsub(" ","",sinIN$Novo)
   sinIN$genotipo <- gsub(" ","",sinIN$genotipo)
@@ -143,14 +143,15 @@ sinoFun <- function(myData, sinIN){
   myData$genotipo <- gsub(" ","", myData$genotipo)
   myData$genotipo <- gsub("\\\\","_", myData$genotipo)
 
+
   for( i in 1:nrow(sinIN)){
     # i=4
     # print(i)
     myOld <- sinIN$genotipo[i]
     myNew <- sinIN %>% filter(genotipo == myOld) %>% dplyr::select(Novo)
-    # match("TRUE", str_detect(myData$genotipo,myNew$Novo,negate = FALSE))
-    pp <-str_c("\\b", myOld, "\\b", collapse="|")
-    myData$genotipo<-stringr::str_replace_all(myData$genotipo, pp, myNew$Novo)
+
+    myNameRef <- grep(myOld,myData$genotipo)
+    myData$genotipo <- replace(myData$genotipo,myNameRef,myNew)
 
   }
   myData$genotipo <- gsub("\\_","\\\\", myData$genotipo)
