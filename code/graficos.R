@@ -283,12 +283,12 @@ makeG9 <- function(inDados,grupos){
 
   checksS <- checksF %>% filter(Tipo %in% grupos)
   inDados <- inDados %>% filter(genotipo %in% checksS$genotipo)
-  inDados <- left_join(inDados,checksF,x.by="genotipo", y.by="genotipo")
+  try(inDados <- left_join(inDados,checksF,x.by="genotipo", y.by="genotipo"),silent = T)
   inDados$Nota <- as.numeric(inDados$Nota)
 
   ggplot(inDados, aes(x=genotipo, y=Nota, fill=Tipo)) +
     geom_boxplot() +
-    ggtitle(unique(inDados$BU)) +
+    ggtitle(paste0(unique(inDados$BU)," - PLC", unique(inDados$stg))) +
     ylim(0,10)+
     scale_y_continuous(breaks=seq(0.0, 10, 1), limits=c(0, 10))+
     geom_hline(yintercept=3, linetype="dashed", color = "blue", size=1.2) +
