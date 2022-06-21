@@ -46,7 +46,7 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
 
 
   for(i in 1:length(inLocal)){
-    # i=1
+    # i=6
     BLUPN <- c()
     BLUEY <- c()
 
