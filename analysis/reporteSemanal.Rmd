@@ -92,9 +92,9 @@ myHB <- NA # Se nao quiser candidato
 
 ## Filtrar por TPP
 # myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
-myTPP <- c("TPP11")
+myTPP <- c("TPP09")
 
-myStag <- c(4) # Aqui seleciona o estagio
+myStag <- c(4,5,6) # Aqui seleciona o estagio
 
 
 # myStag <- 6
@@ -113,7 +113,8 @@ limiteBaixa <- -2 #Desvio entre -2 e 0 é media pressao
 qControl <- 0.1 #trashold
 
 # Contador de datapoints
-dataPointsTable<- count_fun(tableTraits,allData) # arquivo parseCS.R
+dataPointsTable<- count_fun(tableTraits,allData,"local") # arquivo parseCS.R
+
 knitr::kable(dataPointsTable)
 makePie(dataPointsTable, paste0("4,5,6"))
 
@@ -146,17 +147,39 @@ checksF <- checksF %>% filter(TPP %in% myTPP)
 # Filtrando para um hibrido especifico... como 6101
 if(is.na(myHB)==F){
   allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
-  tableCount <- count_fun(tableTraits,allData_hb)
+  tableCount <- count_fun(tableTraits,allData_hb,"local")
+  tableCount$TPP <- myTPP
   DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
 }else{
   for(i in 1:length(myStag)){
-    tableCount <- count_fun(tableTraits,allData_filter)
+    tableCount <- count_fun(tableTraits,allData_filter,"local")
     makePie(tableCount, myStag[i])
     tableCount$stage <- myStag[i]
+    tableCount$TPP <- myTPP
     
     DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
   }
 }
+
+writexl::write_xlsx(tableCount, paste0("../output/",myTPP,"_count-",Sys.Date(),".xlsx"))
+
+#Contando por genotipo
+genoDataFF <- data.frame(nome=NA,
+                         dataPoints=NA,
+                         BU=NA,
+                         experimentos=NA,
+                         genotipo=NA,
+                         TPP=NA,
+                         stage=NA)
+for(i in 1:length(myStag)){
+  cat("meu loop",i,"\n")
+  myCountData <- myDF %>% filter(stg == myStag[i])
+  genoPointsTable<- count_fun(tableTraits,myCountData,"genotipo")
+  genoDataFF <- rbind(genoDataFF,genoPointsTable)
+  
+}
+
+genoDataFF <- na.omit(genoDataFF)
 
 
 ```
@@ -219,12 +242,15 @@ Mostrando o número de entradas (plots) em cada local. Locais com menos de 30 pl
 dfLocal <- data.frame(local=NA,stage=NA)
 dfTrial <- data.frame(local=NA,stage=NA)
 
+remove <- c()
 for(i in 1:length(myStag)){
   # i=1
   myDF2 <- myDF %>% filter(stg==myStag[i])
   # Calculando as entradas por local
   entradasLoc <- as.data.frame(tapply(myDF2$genotipo, myDF2$BU,length))
   entradasTrial <- as.data.frame(tapply(myDF2$genotipo, myDF2$local,length))
+  
+  
   
   entradasLoc <- entradasLoc %>% mutate(local = rownames(entradasLoc))
   entradasTrial <- entradasTrial %>% mutate(local = rownames(entradasTrial))
@@ -241,6 +267,12 @@ for(i in 1:length(myStag)){
   entradasLoc <- entradasLoc %>% filter(Entradas>30, Entradas<3000)
   entradasTrial <- entradasTrial %>% filter(Entradas>30, Entradas<300)
   
+  if(nrow(entradasLoc)==0){
+    cat("Nao teve numero de plots suficientes no estagio ",myStag[i],".\n")
+    remove <- append(remove,myStag[i])
+    next
+    }
+  
   predfLocal <- data.frame(local=entradasLoc$local,stage=myStag[i])
   predfTrial <- data.frame(local=entradasTrial$local,stage=myStag[i])
   
@@ -253,6 +285,8 @@ for(i in 1:length(myStag)){
   pcT <- makePlots(entradasTrial,myStag[i])
   print(pcT)
 }
+
+myStag <- myStag[!myStag %in% remove]
 
 dfLocal <- na.omit(dfLocal)
 dfTrial <- na.omit(dfTrial)
@@ -364,6 +398,13 @@ classeFinalTrialBU <- rbind(finalTabelaBU,finalTabelaTrial)
 
 # salvando em excel
 writexl::write_xlsx(classeFinalTrialBU,nomeClasseLocais)
+
+# Preparando o arquivo para o shiny
+bluesBU <- BLUEs %>% filter(type=="BU") %>% select(genotipo,local,TPP,blueN)
+genLoc <- left_join(bluesBU,finalTabelaBU,by=c("local"="Local"))
+genLoc <- genLoc %>% select(genotipo,local,TPP,blueN,classe,stage)
+
+writexl::write_xlsx(genLoc,paste0("../output/",myTPP,"_genoLoca-",Sys.Date(),".xlsx"))
 
 
 ```
