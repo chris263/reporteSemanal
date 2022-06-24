@@ -92,9 +92,9 @@ myHB <- NA # Se nao quiser candidato
 
 ## Filtrar por TPP
 # myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
-myTPP <- c("TPP09")
+myTPP <- c("TPP12")
 
-myStag <- c(4,5,6) # Aqui seleciona o estagio
+myStag <- c(6) # Aqui seleciona o estagio
 
 
 # myStag <- 6
@@ -164,22 +164,22 @@ if(is.na(myHB)==F){
 writexl::write_xlsx(tableCount, paste0("../output/",myTPP,"_count-",Sys.Date(),".xlsx"))
 
 #Contando por genotipo
-genoDataFF <- data.frame(nome=NA,
-                         dataPoints=NA,
-                         BU=NA,
-                         experimentos=NA,
-                         genotipo=NA,
-                         TPP=NA,
-                         stage=NA)
-for(i in 1:length(myStag)){
-  cat("meu loop",i,"\n")
-  myCountData <- myDF %>% filter(stg == myStag[i])
-  genoPointsTable<- count_fun(tableTraits,myCountData,"genotipo")
-  genoDataFF <- rbind(genoDataFF,genoPointsTable)
-  
-}
-
-genoDataFF <- na.omit(genoDataFF)
+# genoDataFF <- data.frame(nome=NA,
+#                          dataPoints=NA,
+#                          BU=NA,
+#                          experimentos=NA,
+#                          genotipo=NA,
+#                          TPP=NA,
+#                          stage=NA)
+# for(i in 1:length(myStag)){
+#   cat("meu loop",i,"\n")
+#   myCountData <- myDF %>% filter(stg == myStag[i])
+#   genoPointsTable<- count_fun(tableTraits,myCountData,"local")
+#   genoDataFF <- rbind(genoDataFF,genoPointsTable)
+# 
+# }
+# 
+# genoDataFF <- na.omit(genoDataFF)
 
 
 ```
@@ -404,7 +404,7 @@ bluesBU <- BLUEs %>% filter(type=="BU") %>% select(genotipo,local,TPP,blueN)
 genLoc <- left_join(bluesBU,finalTabelaBU,by=c("local"="Local"))
 genLoc <- genLoc %>% select(genotipo,local,TPP,blueN,classe,stage)
 
-writexl::write_xlsx(genLoc,paste0("../output/",myTPP,"_genoLoca-",Sys.Date(),".xlsx"))
+writexl::write_xlsx(genLoc,paste0("../output/",myTPP,"_genoLoc-",Sys.Date(),".xlsx"))
 
 
 ```
@@ -444,6 +444,7 @@ Resumo dos locais
 ```{r tabelaLoc, echo=FALSE}
 
 # Escolhendo alguns locais especificos via análise grafica 
+addBU <- "BU07"
 # addBU <- c("BC47","BC33","BC31","BC08")
 
 if(exists("addBU")==T){
@@ -505,10 +506,10 @@ listTraits <- listTraits[!(listTraits=="COSTR")] # Removendo Corn Stunt
 dataMedia <- data.frame(genotipo=NA,stage=NA,trait=NA,blupNota=NA,sdErr=NA)
 dataBU <- data.frame(genotipo=NA,BU=NA, stage=NA,trait=NA,Nota=NA)
 
-
+allData_filter <- sinoFun(allData_filter,sinN)
 for(j in 1:length(listTraits)){
   # j=1
-  
+  require(lme4)
   filterMean <- allData_filter %>% filter(trait %in% listTraits[j]) %>%
     select(TPP,stg,BU,genotipo,barcode,rep,Nota)
   
@@ -609,6 +610,7 @@ dataMedia <- dataMedia[-1,]
 dataBU <- dataBU[-1,]
 dataMedia$stage <- gsub("X","",dataMedia$stage)
 dataBU$stage <- gsub("X","",dataBU$stage)
+
 
 # salvando em excel
 writexl::write_xlsx(dataMedia,nomeSalvar)

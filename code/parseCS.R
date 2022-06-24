@@ -179,9 +179,9 @@ parsing_data <- function(stageData, nomes_entrada){
 
 
 count_fun <- function(inTable,inData, inType){
-  inTable = tableTraits
-  inData = myCountData
-  inType <- "genotipos"
+  # inTable = tableTraits
+  # inData = myCountData
+  # inType <- "genotipos"
 
   if(inType == "local"){
     for(i in 1:length(inTable$codigo)){
