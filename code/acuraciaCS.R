@@ -3,14 +3,12 @@ classLocations <- function(preAll, checks){
   # preAll <- preBLUEs_BU
   # checks <- checksF
 
-  checks$genotipo <- toupper(checks$genotipo)
-  checks$genotipo <- gsub(" ","",checks$genotipo)
-
   colnames(checks) <- c("genotipo","Check","Trait","Esperado","Tipo","TPP","valor" )
   phenoAll <- c()
   preAll <- preAll%>%mutate(Esperado = 0)
   preAll <- preAll%>%mutate(Check = 0)
   preAll <- preAll%>%mutate(Tipo="Obs")
+
 
   # myCheck <- unique(checks$genotipo)
   preCheck <- preAll %>% filter(genotipo %in% checks$genotipo)
@@ -50,6 +48,7 @@ classLocations <- function(preAll, checks){
 
   }
 
+
   # Adicionando os demais materiais que não são checks
   phenoAll <- rbind(phenoAll,nonCheck)
 
@@ -87,11 +86,7 @@ classLocations <- function(preAll, checks){
     # Filtrando por local
     selectedLocal <- phenoAll %>% filter(local == nomesLocais[i])
 
-    # meusChecksTPP <- checks %>% filter(TPP == unique(selectedLocal$TPP)) %>% select(genotipo)
-
-    # selectedLocal$Check <- 0
-    # selectedLocal$Check[selectedLocal$genotipo %in% meusChecks] <- 1
-
+    checksTPP <- selectedLocal %>% filter(genotipo %in% checks$genotipo, TPP == unique(selectedLocal$TPP))
     classFinal$Local[i] <- nomesLocais[i]
 
     #Verificando se possui checks para as 4 classes
@@ -106,8 +101,8 @@ classLocations <- function(preAll, checks){
 
     # Vetor com os checks
     # checks <- selectedLocal %>% filter(Check == 1, Esperado == 4 | Esperado == 5 )
-    checks <- selectedLocal %>% filter(Check == 1)
-    chiDF <- data.frame(tapply(checks$blueN,checks$genotipo,mean)) %>% data.frame(tapply(checks$Esperado,checks$genotipo,mean))
+    # ChecksTPP <- selectedLocal %>% filter(Check == 1, )
+    chiDF <- data.frame(tapply(checksTPP$blueN,checksTPP$genotipo,mean)) %>% data.frame(tapply(checksTPP$Esperado,checksTPP$genotipo,mean))
     colnames(chiDF) <- c("Obs","Esp")
 
     # Calculando chi quadrado

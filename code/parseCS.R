@@ -136,18 +136,23 @@ sinoFun <- function(myData, sinIN){
   # sinIN <- sinN
   # myData <- myDF
 
-  sinIN$Novo <- gsub(" ","",sinIN$Novo)
+  colnames(sinIN) <- c("genotipo", "novo")
+
+  sinIN$novo <- gsub(" ","",sinIN$novo)
   sinIN$genotipo <- gsub(" ","",sinIN$genotipo)
   sinIN$genotipo <- gsub("\\\\","_",sinIN$genotipo)
+  sinIN$genotipo <- gsub("\\.","",sinIN$genotipo)
+  sinIN$genotipo <- toupper(sinIN$genotipo)
+
   myData$genotipo <- gsub(" ","", myData$genotipo)
   myData$genotipo <- gsub("\\\\","_", myData$genotipo)
-  # myData$genotipo <- gsub("\\.","",myData$genotipo)
+  myData$genotipo <- toupper(myData$genotipo)
 
   for( i in 1:nrow(sinIN)){
     # i=4
     # print(i)
     myOld <- sinIN$genotipo[i]
-    myNew <- sinIN %>% filter(genotipo == myOld) %>% dplyr::select(Novo)
+    myNew <- sinIN %>% filter(genotipo == myOld) %>% dplyr::select(novo)
     getPosition <- grep(myOld,myData$genotipo)
 
     myData$genotipo <- replace(myData$genotipo, getPosition, myNew)
@@ -178,25 +183,65 @@ parsing_data <- function(stageData, nomes_entrada){
 }
 
 
-count_fun <- function(inTable,inData){
+count_fun <- function(inTable,inData, inType){
   # inTable = tableTraits
-  # inData = allData_filter
+  # inData = myCountData
+  # inType <- "genotipos"
 
-  for(i in 1:length(inTable$codigo)){
-    # i=1
-    dataPoint <- inData %>% filter(trait == inTable$codigo[i]) %>%
-      select(local,genotipo,BU,barcode,rep,trait,Nota)
-    dataPoint <- na.omit(dataPoint)
-    # dataPoint <- distinct(dataPoint,barcode,trait, .keep_all = TRUE)
-    trt <- nrow(dataPoint)
-    inTable$dataPoints[i] <- trt
-    inTable$BU[i] <- length(unique(dataPoint$BU))
-    inTable$experimentos[i] <- length(unique(dataPoint$local))
+  if(inType == "local"){
+    for(i in 1:length(inTable$codigo)){
+      # i=1
+      dataPoint <- inData %>% filter(trait == inTable$codigo[i]) %>%
+        select(local,genotipo,BU,barcode,rep,trait,Nota)
+      dataPoint <- na.omit(dataPoint)
+      # dataPoint <- distinct(dataPoint,barcode,trait, .keep_all = TRUE)
+      trt <- nrow(dataPoint)
+      inTable$dataPoints[i] <- trt
+      inTable$BU[i] <- length(unique(dataPoint$BU))
+      inTable$experimentos[i] <- length(unique(dataPoint$local))
+    }
+    # Adicionando uma linha com os totais:
+    inTable[nrow(inTable)+1,] <- c("Total","Total",sum(inTable$dataPoints),
+                                   sum(inTable$BU),sum(inTable$experimentos))
+
+  }else{
+    inGenos <- unique(inData$genotipo)
+    inTable$dataPoints <- NA
+    inTable$BU <-NA
+    inTable$experimentos <- NA
+    inTable$genotipo <- NA
+    inTable$TPP <- myTPP
+    inTable1 = inTable
+    inTable2 = inTable
+    cc=1
+
+    for(j in 1:length(inGenos)){
+      if(j>nrow(inTable1)){
+        inTable <- rbind(inTable,inTable1)
+      }
+      for(i in 1:length(inTable1$codigo)){
+        cat(cc, i,"\n")
+        dataPoint <- inData %>% filter(genotipo == inGenos[j], trait ==inTable$codigo[i]) %>%
+          select(local,genotipo,BU,barcode,rep,trait,Nota)
+        dataPoint <- na.omit(dataPoint)
+        if(nrow(dataPoint)==0){next}
+        # dataPoint <- distinct(dataPoint,barcode,trait, .keep_all = TRUE)
+        trt <- nrow(dataPoint)
+        inTable$dataPoints[cc] <- trt
+        inTable$BU[cc] <- length(unique(dataPoint$BU))
+        inTable$experimentos[cc] <- length(unique(dataPoint$local))
+        inTable$genotipo[cc] <- inGenos[j]
+        cc=cc+1
+      }
+      inTable2 <- rbind(inTable2,inTable)
+      j=j+1
+    }
+
+    inTable <- inTable2
+    # Adicionando uma linha com os totais:
+    inTable[nrow(inTable)+1,] <- c("Total","Total",sum(inTable$dataPoints),
+                                   sum(inTable$BU),sum(inTable$experimentos),"-",",")
   }
-
-  # Adicionando uma linha com os totais:
-  inTable[nrow(inTable)+1,] <- c("Total","Total",sum(inTable$dataPoints),
-                                 sum(inTable$BU),sum(inTable$experimentos))
 
   return(inTable)
 }
