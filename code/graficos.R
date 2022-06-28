@@ -278,8 +278,8 @@ makeS1 <- function(inS1){
 }
 
 makeG9 <- function(inDados,grupos){
-  inDados = myGraph
-  grupos = c("MS","MT")
+  # inDados = myGraph
+  # grupos = c("MS","MT")
 
   inTPP <- unique(inDados$TPP)
   checksS <- checksF %>% filter(Tipo %in% grupos, TPP == inTPP)

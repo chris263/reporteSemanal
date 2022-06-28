@@ -50,11 +50,13 @@ print("Confirme os nomes dos arquivos lidos. Esta faltando algum?")
 print(filenames)
 
 allData <- read_fun(filenames)
+
+
 # unique(allData$TPP)
 # Carregando arquivos auxiliares de checks e sinonimos
-checksCS <- readxl::read_xlsx("../data/renataMilho27062022.xlsx", sheet="Checks")
+checksCS <- readxl::read_xlsx("../data/renataMilho28062022.xlsx", sheet="Checks")
 checksCS$Esperado <- as.numeric(checksCS$Esperado)
-sinN <- readxl::read_xlsx("../data/renataMilho27062022.xlsx", sheet="Sinonimos")
+sinN <- readxl::read_xlsx("../data/renataMilho28062022.xlsx", sheet="Sinonimos")
 # sinN <- readxl::read_xlsx("../data/original_suporteMilho.xlsx", sheet="Sinonimos")
 
 colnames(sinN) <- c("genotipo","Novo")
@@ -79,6 +81,8 @@ if(errorMessage==T){
 }
 
 
+# Corrigindo sinonimos
+allData <- sinoFun(allData,sinN)
 
 # Selecionando o trait que vamos trabalhar
 tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR"),
@@ -88,21 +92,14 @@ tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRST
 selTrait <- tableTraits$nome[1]
 filterTrait <- tableTraits %>% filter(nome %in% selTrait)
 
-# Deseja filtrar para algum candidato?
-myHB <- NA # Se nao quiser candidato
-# myHB <- "6101ZL" # sequiser o 6101ZL - nao precisa escrever o nome todo
-
 ## Filtrar por TPP
 myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
 # myTPP <- c("TPP12")
 
-myStag <- c(5) # Aqui seleciona o estagio
+myStag <- c(4,5,6) # Aqui seleciona o estagio
 
-
-# myStag <- 6
 allData_filter <- allData %>% filter(TPP %in% myTPP)
-allData_filter$stg <- gsub(8,6,allData_filter$stg) # transformando estagio 8 em 6
-allData_filter$stg <- gsub("L",4,allData_filter$stg)
+
 
 #Analisar yiedl junto?
 duasT <- "no"
@@ -120,20 +117,38 @@ dataPointsTable<- count_fun(tableTraits,allData,"local") # arquivo parseCS.R
 knitr::kable(dataPointsTable)
 makePie(dataPointsTable, paste0("4,5,6"))
 
-allData <- sinoFun(allData,sinN)
-
-# writexl::write_xlsx(allData, "../output/rawData.xlsx" )
+writexl::write_xlsx(dataPointsTable, "../output/countAllData.xlsx" )
 
 ```
 
+## Checando candidatos especificos
 
+```{r candidatosH, echo=T, warning=F}
+
+myHB <- "SXC2241ZL0" # sequiser o 6101ZL - nao precisa escrever o nome todo
+allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
+
+allData_hb <- allData_hb %>% filter(year %in% c(21,22))
+
+unique(allData_hb$BU)
+
+tableCount <- count_fun(tableTraits,allData_hb,"local")
+DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
+
+
+locHy <- unique(allData_hb$local)
+
+writexl::write_xlsx(tableCount, paste0("../output/",myHB,"_count-",Sys.Date(),".xlsx"))
+
+```
 ## Controle de qualidade
 Aqui acontece ...
 
 ```{r controle, echo=FALSE, warning=FALSE}
-myDF <- allData_filter %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag) %>%
-  select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP)
 
+# Na funcao abaixo usa yes para analisar um hibrido especifico
+# Usa-se nao para análise generica
+myDF <- dfFUN(allData_filter,"yes")
 myDF <- na.omit(myDF)
 
 # Preparando os checks
@@ -144,30 +159,13 @@ checksF$Genotipo <- gsub(" ", "", checksF$Genotipo, fixed = TRUE)
 checksF$Genotipo <- toupper(checksF$Genotipo)
 colnames(checksF) <- c("genotipo", "Check", "Trait", "Esperado", "Tipo")
 
-checksF<-sinoFun(checksF,sinN)
+# checksF<-sinoFun(checksF,sinN)
 # Corrigindo nome das colunas
 checksF <- checksF[,-7]
 colnames(checksF)[6] <- "TPP"
 checksF <- checksF %>% filter(TPP %in% myTPP)
 
-# Filtrando para um hibrido especifico... como 6101
-if(is.na(myHB)==F){
-  allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
-  tableCount <- count_fun(tableTraits,allData_hb,"local")
-  tableCount$TPP <- myTPP
-  DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
-}else{
-  for(i in 1:length(myStag)){
-    tableCount <- count_fun(tableTraits,allData_filter,"local")
-    makePie(tableCount, myStag[i])
-    tableCount$stage <- myStag[i]
-    tableCount$TPP <- myTPP
-    
-    DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
-  }
-}
 
-writexl::write_xlsx(tableCount, paste0("../output/",myTPP,"_count-",Sys.Date(),".xlsx"))
 
 #Contando por genotipo
 # genoDataFF <- data.frame(nome=NA,
@@ -195,19 +193,6 @@ writexl::write_xlsx(tableCount, paste0("../output/",myTPP,"_count-",Sys.Date(),"
 Carregando os dados e checando os nomes dos genótipo, checks, locais.
 
 ```{r pressure, warnings=FALSE, echo=FALSE, include=TRUE}
-
-# Preparando para as analises
-# Padronizando nomes: Removendo espaços e passando para maiusculas
-myDF$genotipo <- gsub(" ", "", myDF$genotipo, fixed = TRUE)
-myDF$local <- gsub(" ", "", myDF$local, fixed = TRUE)
-myDF$genotipo <- toupper(myDF$genotipo)
-myDF$local <- toupper(myDF$local)
-
-# Alterando os nomes de acordo com os sinonimos
-# myDF<-sinoFun(myDF,sinN) # esta no arquivo parse
-
-# procurar por um nome especifico
-# match("TRUE",str_detect(myDF$genotipo,"30F53VYH"))
 
 # Verificando o numero de checks utilizados
 meusChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% dplyr::select(genotipo,local,TPP)
@@ -410,7 +395,7 @@ bluesBU <- BLUEs %>% filter(type=="BU") %>% select(genotipo,local,TPP,blueN)
 genLoc <- left_join(bluesBU,finalTabelaBU,by=c("local"="Local"))
 genLoc <- genLoc %>% select(genotipo,local,TPP,blueN,classe,stage)
 
-writexl::write_xlsx(genLoc,paste0("../output/",myTPP,"_genoLoc-",Sys.Date(),".xlsx"))
+writexl::write_xlsx(genLoc,paste0("../output/",myHB,"_genoLoc-",Sys.Date(),".xlsx"))
 
 
 ```
@@ -424,21 +409,18 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 
 
 require(gridExtra)
-# for(i in 1:length(unique(finalTabela2$Local))){
 
-myDF6 <- myDF %>% filter(stg == myStag)
-match("TRUE", str_detect(finalTabelaBU$Local,"BU35"))
+selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Media")]
+myDF6 <- myDF %>% filter(BU %in% selBUs)
+# match("TRUE", str_detect(finalTabelaBU$Local,"BU35"))
 
-
-
-for(i in 1:){
-  i=13
-  myGraph <- myDF6 %>% filter(BU %in% finalTabelaBU$Local[i])
-  # myGraph <- myDF6 %>% filter(BU %in% finalTabela2$Local[i])
+for(i in 1:length(selBUs)){
+  # i=4
+  myGraph <- myDF6 %>% filter(BU %in% selBUs[i])
   # p1 <- makeG0(myGraph,"genotipo","Nota")
   # p2 <- makeH0(myGraph,"Nota")
-  p3 <- makeG9(myGraph,c("MS","MT"),"TPP11")
-  p4 <- makeG9(myGraph,c("S","T"),"TPP11")
+  p3 <- makeG9(myGraph,c("MS","MT"))
+  p4 <- makeG9(myGraph,c("S","T"))
   # grid.arrange(p1, p2, ncol = 2)
   grid.arrange(p3, p4, ncol = 2)
 }
@@ -453,7 +435,7 @@ Resumo dos locais
 ```{r tabelaLoc, echo=FALSE}
 
 # Escolhendo alguns locais especificos via análise grafica 
-addBU <- c("BU07","BT06")
+# addBU <- c("BC02")
 # addBU <- c("BC47","BC33","BC31","BC08")
 
 if(exists("addBU")==T){
@@ -497,8 +479,40 @@ DT::datatable(classeFinalGenotipos, options=list(search=list(regex=TRUE, search 
 writexl::write_xlsx(classeFinalGenotipos,nomeClasseGenotipos)
 
 conjuntaGenotipos <- rbind(modeloBU,modeloTrial)
-nomeConjuntaGenotipos <- paste0("../output/conjuntaGenotiposCS_",Sys.Date(),".xlsx")
+nomeConjuntaGenotipos <- paste0("../output/conjunta_",myHB,"_CS_",Sys.Date(),".xlsx")
 writexl::write_xlsx(conjuntaGenotipos,nomeConjuntaGenotipos)
+
+
+myCandidato <- allData_hb %>% filter(genotipo %in% myHB, trait == "COSTR") #, BU %in% selBUs) 
+myCandidato$Nota <- as.numeric(myCandidato$Nota)
+myCandidato$year <- as.numeric(myCandidato$year)
+
+
+
+library(tidyverse)
+library(hrbrthemes)
+library(viridis)
+
+
+data2 <- data.frame(year = myCandidato$year, Nota = myCandidato$Nota)
+data2$year <- as.factor(data2$year)
+# Plot
+data2 %>%
+  ggplot( aes(x=year, y=Nota, fill=year)) +
+    geom_boxplot() +
+  
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    geom_jitter(color="black", size=0.4, alpha=0.9) +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+  scale_y_continuous(limits = c(0,9),breaks = c(0:9)) +
+    ggtitle(paste0("Notas Enfezamento ", myHB)) +
+    xlab("")
+
+
 
 ```
 
@@ -516,7 +530,7 @@ listTraits <- listTraits[!(listTraits=="COSTR")] # Removendo Corn Stunt
 dataMedia <- data.frame(genotipo=NA,stage=NA,trait=NA,blupNota=NA,sdErr=NA)
 dataBU <- data.frame(genotipo=NA,BU=NA, stage=NA,trait=NA,Nota=NA)
 
-allData_filter <- sinoFun(allData_filter,sinN)
+
 for(j in 1:length(listTraits)){
   # j=1
   require(lme4)
