@@ -278,10 +278,11 @@ makeS1 <- function(inS1){
 }
 
 makeG9 <- function(inDados,grupos){
-  # inDados = myGraph
-  # grupos = c("S","T")
+  inDados = myGraph
+  grupos = c("MS","MT")
 
-  checksS <- checksF %>% filter(Tipo %in% grupos)
+  inTPP <- unique(inDados$TPP)
+  checksS <- checksF %>% filter(Tipo %in% grupos, TPP == inTPP)
   inDados <- inDados %>% filter(genotipo %in% checksS$genotipo)
   try(inDados <- left_join(inDados,checksF,x.by="genotipo", y.by="genotipo"),silent = T)
   inDados$Nota <- as.numeric(inDados$Nota)

@@ -136,18 +136,23 @@ sinoFun <- function(myData, sinIN){
   # sinIN <- sinN
   # myData <- myDF
 
-  sinIN$Novo <- gsub(" ","",sinIN$Novo)
+  colnames(sinIN) <- c("genotipo", "novo")
+
+  sinIN$novo <- gsub(" ","",sinIN$novo)
   sinIN$genotipo <- gsub(" ","",sinIN$genotipo)
   sinIN$genotipo <- gsub("\\\\","_",sinIN$genotipo)
+  sinIN$genotipo <- gsub("\\.","",sinIN$genotipo)
+  sinIN$genotipo <- toupper(sinIN$genotipo)
+
   myData$genotipo <- gsub(" ","", myData$genotipo)
   myData$genotipo <- gsub("\\\\","_", myData$genotipo)
-  # myData$genotipo <- gsub("\\.","",myData$genotipo)
+  myData$genotipo <- toupper(myData$genotipo)
 
   for( i in 1:nrow(sinIN)){
     # i=4
     # print(i)
     myOld <- sinIN$genotipo[i]
-    myNew <- sinIN %>% filter(genotipo == myOld) %>% dplyr::select(Novo)
+    myNew <- sinIN %>% filter(genotipo == myOld) %>% dplyr::select(novo)
     getPosition <- grep(myOld,myData$genotipo)
 
     myData$genotipo <- replace(myData$genotipo, getPosition, myNew)

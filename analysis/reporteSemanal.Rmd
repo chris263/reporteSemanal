@@ -52,9 +52,11 @@ print(filenames)
 allData <- read_fun(filenames)
 # unique(allData$TPP)
 # Carregando arquivos auxiliares de checks e sinonimos
-checksCS <- readxl::read_xlsx("../data/renataMilho21062022.xlsx", sheet="Checks")
+checksCS <- readxl::read_xlsx("../data/renataMilho27062022.xlsx", sheet="Checks")
 checksCS$Esperado <- as.numeric(checksCS$Esperado)
-sinN <- readxl::read_xlsx("../data/original_suporteMilho.xlsx", sheet="Sinonimos")
+sinN <- readxl::read_xlsx("../data/renataMilho27062022.xlsx", sheet="Sinonimos")
+# sinN <- readxl::read_xlsx("../data/original_suporteMilho.xlsx", sheet="Sinonimos")
+
 colnames(sinN) <- c("genotipo","Novo")
 
 sinN <- distinct(sinN, genotipo,Novo)
@@ -91,10 +93,10 @@ myHB <- NA # Se nao quiser candidato
 # myHB <- "6101ZL" # sequiser o 6101ZL - nao precisa escrever o nome todo
 
 ## Filtrar por TPP
-# myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
-myTPP <- c("TPP12")
+myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
+# myTPP <- c("TPP12")
 
-myStag <- c(6) # Aqui seleciona o estagio
+myStag <- c(5) # Aqui seleciona o estagio
 
 
 # myStag <- 6
@@ -117,6 +119,10 @@ dataPointsTable<- count_fun(tableTraits,allData,"local") # arquivo parseCS.R
 
 knitr::kable(dataPointsTable)
 makePie(dataPointsTable, paste0("4,5,6"))
+
+allData <- sinoFun(allData,sinN)
+
+# writexl::write_xlsx(allData, "../output/rawData.xlsx" )
 
 ```
 
@@ -198,7 +204,7 @@ myDF$genotipo <- toupper(myDF$genotipo)
 myDF$local <- toupper(myDF$local)
 
 # Alterando os nomes de acordo com os sinonimos
-myDF<-sinoFun(myDF,sinN) # esta no arquivo parse
+# myDF<-sinoFun(myDF,sinN) # esta no arquivo parse
 
 # procurar por um nome especifico
 # match("TRUE",str_detect(myDF$genotipo,"30F53VYH"))
@@ -420,16 +426,19 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 require(gridExtra)
 # for(i in 1:length(unique(finalTabela2$Local))){
 
-myDF6 <- myDF %>% filter(stg == 6)
-match("TRUE", str_detect(finalTabela2$Local,"BC08"))
+myDF6 <- myDF %>% filter(stg == myStag)
+match("TRUE", str_detect(finalTabelaBU$Local,"BU35"))
 
-for(i in 1:2){
-  i=8
-  myGraph <- myDF6 %>% filter(BU %in% finalTabela2$Local[i]) %>% filter(genotipo %in% checksF$genotipo)
+
+
+for(i in 1:){
+  i=13
+  myGraph <- myDF6 %>% filter(BU %in% finalTabelaBU$Local[i])
+  # myGraph <- myDF6 %>% filter(BU %in% finalTabela2$Local[i])
   # p1 <- makeG0(myGraph,"genotipo","Nota")
   # p2 <- makeH0(myGraph,"Nota")
-  p3 <- makeG9(myGraph,c("MS","MT"))
-  p4 <- makeG9(myGraph,c("S","T"))
+  p3 <- makeG9(myGraph,c("MS","MT"),"TPP11")
+  p4 <- makeG9(myGraph,c("S","T"),"TPP11")
   # grid.arrange(p1, p2, ncol = 2)
   grid.arrange(p3, p4, ncol = 2)
 }
@@ -444,7 +453,7 @@ Resumo dos locais
 ```{r tabelaLoc, echo=FALSE}
 
 # Escolhendo alguns locais especificos via análise grafica 
-addBU <- "BU07"
+addBU <- c("BU07","BT06")
 # addBU <- c("BC47","BC33","BC31","BC08")
 
 if(exists("addBU")==T){
@@ -481,9 +490,10 @@ if(length(trialAlta)>0){
 }
 
 classeFinalGenotipos <- rbind(genoAltaBU,genoAltaTrial)
-classeFinalGenotipos <-genoAltaBU
+classeFinalGenotipos <- genoAltaBU
 # Salvando no excel
 nomeClasseGenotipos <- paste0("../output/classeGenotiposCS_",Sys.Date(),".xlsx")
+DT::datatable(classeFinalGenotipos, options=list(search=list(regex=TRUE, search = '')))
 writexl::write_xlsx(classeFinalGenotipos,nomeClasseGenotipos)
 
 conjuntaGenotipos <- rbind(modeloBU,modeloTrial)
