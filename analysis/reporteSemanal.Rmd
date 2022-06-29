@@ -42,52 +42,59 @@ nomeSalvarBU <- paste0("../output/BU_Doencas_",Sys.Date(),".xlsx")
 nomeClasseLocais <- paste0("../output/classesPressaoCS_",Sys.Date(),".xlsx")
 saveChecks <- paste0("../output/checksLoc_",Sys.Date(),".xlsx")
 
+
+## Carregando RData já processado
+load("../data/database_2022-06-29.RData")
+
+
 ## Usar o formato csv para evitar problemas nos dados
 ## Inserir uma coluna em branco no csv
 
-filenames <- list.files("../data", pattern=glob2rx("^TPP*.csv$"), full.names=TRUE)
-print("Confirme os nomes dos arquivos lidos. Esta faltando algum?")
-print(filenames)
-
-allData <- read_fun(filenames)
-
-
-# unique(allData$TPP)
-# Carregando arquivos auxiliares de checks e sinonimos
-checksCS <- readxl::read_xlsx("../data/renataMilho28062022.xlsx", sheet="Checks")
-checksCS$Esperado <- as.numeric(checksCS$Esperado)
-sinN <- readxl::read_xlsx("../data/renataMilho28062022.xlsx", sheet="Sinonimos")
-# sinN <- readxl::read_xlsx("../data/original_suporteMilho.xlsx", sheet="Sinonimos")
-
-colnames(sinN) <- c("genotipo","Novo")
-
-sinN <- distinct(sinN, genotipo,Novo)
-
-errorMessage=FALSE
-
-tryCatch(tidyr::gather(checksCS,TPP,valor,6:9),
- error = function(e)
- errorMessage <<- TRUE)
-
-if(errorMessage==T){
-  checksCS <- checksCS %>% mutate(TPP09=1,
-                                  TPP10=1,
-                                  TPP11=1,
-                                  TPP12=1)
-  
-  checksCS <- tidyr::gather(checksCS,TPP,valor,6:9)
-}else{
-  checksCS <- tidyr::gather(checksCS,TPP,valor,6:9)
-}
+# filenames <- list.files("../data", pattern=glob2rx("^TPP*.csv$"), full.names=TRUE)
+# print("Confirme os nomes dos arquivos lidos. Esta faltando algum?")
+# print(filenames)
+# 
+# allData <- read_fun(filenames)
 
 
-# Corrigindo sinonimos
-allData <- sinoFun(allData,sinN)
+## unique(allData$TPP)
+## Carregando arquivos auxiliares de checks e sinonimos
+# checksCS <- readxl::read_xlsx("../data/renataMilho28062022.xlsx", sheet="Checks")
+# checksCS$Esperado <- as.numeric(checksCS$Esperado)
+# sinN <- readxl::read_xlsx("../data/renataMilho28062022v2.xlsx", sheet="Sinonimos")
+# sinN <- distinct(sinN, genotipo,Novo)
+# 
+# 
+# errorMessage=FALSE
+# 
+# tryCatch(tidyr::gather(checksCS,TPP,valor,6:9),
+#  error = function(e)
+#  errorMessage <<- TRUE)
+# 
+# if(errorMessage==T){
+#   checksCS <- checksCS %>% mutate(TPP09=1,
+#                                   TPP10=1,
+#                                   TPP11=1,
+#                                   TPP12=1)
+# 
+#   checksCS <- tidyr::gather(checksCS,TPP,valor,6:9)
+# }else{
+#   checksCS <- tidyr::gather(checksCS,TPP,valor,6:9)
+# }
 
-# Selecionando o trait que vamos trabalhar
-tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR"),
-                          nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
-                                 "bipolaris","ferrugem","diplodia"))
+# 
+## Corrigindo sinonimos
+# allData <- sinoFun(allData,sinN)
+# checksCS <- sinoFun(checksCS,sinN)
+#  
+## Selecionando o trait que vamos trabalhar
+# tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR"),
+                          # nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
+                          #        "bipolaris","ferrugem","diplodia"))
+
+## Save multiple objects
+# save(allData, checksCS, tableTraits, file = paste0("../data/database_",Sys.Date(),".RData"))
+ 
 
 selTrait <- tableTraits$nome[1]
 filterTrait <- tableTraits %>% filter(nome %in% selTrait)
@@ -111,11 +118,13 @@ limiteBaixa <- -2 #Desvio entre -2 e 0 é media pressao
 # quality control
 qControl <- 0.1 #trashold
 
+
+
 # Contador de datapoints
 dataPointsTable<- count_fun(tableTraits,allData,"local") # arquivo parseCS.R
 
 knitr::kable(dataPointsTable)
-makePie(dataPointsTable, paste0("4,5,6"))
+makePie(dataPointsTable, paste0("PLC: 4,5,6"))
 
 writexl::write_xlsx(dataPointsTable, "../output/countAllData.xlsx" )
 
@@ -125,20 +134,24 @@ writexl::write_xlsx(dataPointsTable, "../output/countAllData.xlsx" )
 
 ```{r candidatosH, echo=T, warning=F}
 
-myHB <- "SXC2241ZL0" # sequiser o 6101ZL - nao precisa escrever o nome todo
+# unique(allData$stg)
+
+myHB <- "SXC1432ZL0" # sequiser o 6101ZL - nao precisa escrever o nome todo
 allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
 
-allData_hb <- allData_hb %>% filter(year %in% c(21,22))
+# allData_hb <- allData_hb %>% filter(year %in% c(21,22))
 
-unique(allData_hb$BU)
+dataYear <-unique(allData_hb$year)
 
 tableCount <- count_fun(tableTraits,allData_hb,"local")
 DT::datatable(tableCount, options=list(search=list(regex=TRUE, search = '')))
 
 
-locHy <- unique(allData_hb$local)
+locHy <- unique(allData_hb$BU)
 
 writexl::write_xlsx(tableCount, paste0("../output/",myHB,"_count-",Sys.Date(),".xlsx"))
+dataPrint <- c(myHB, dataYear)
+makePie(tableCount, paste0(dataPrint, collapse = "-"))
 
 ```
 ## Controle de qualidade
@@ -152,11 +165,13 @@ myDF <- dfFUN(allData_filter,"yes")
 myDF <- na.omit(myDF)
 
 # Preparando os checks
-checksCS$Trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$Trait)
-checksF <- checksCS %>% filter(Trait %in% filterTrait$nome[1], TPP %in% myTPP, valor == 1 )
+checksCS$trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$trait)
+checksCS$TPP <- toupper(checksCS$TPP)
+checksF <- checksCS %>% filter(trait %in% filterTrait$nome[1], TPP %in% myTPP, valor == 1 )
 #Preparando o arquivo com checks
-checksF$Genotipo <- gsub(" ", "", checksF$Genotipo, fixed = TRUE)
+checksF$genotipo <- gsub(" ", "", checksF$genotipo, fixed = TRUE)
 checksF$Genotipo <- toupper(checksF$Genotipo)
+
 colnames(checksF) <- c("genotipo", "Check", "Trait", "Esperado", "Tipo")
 
 # checksF<-sinoFun(checksF,sinN)
@@ -409,13 +424,13 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 
 
 require(gridExtra)
-
+selBUs <- c("22WNBC33","22WNBC31")
 selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Media")]
 myDF6 <- myDF %>% filter(BU %in% selBUs)
 # match("TRUE", str_detect(finalTabelaBU$Local,"BU35"))
 
 for(i in 1:length(selBUs)){
-  # i=4
+  i=1
   myGraph <- myDF6 %>% filter(BU %in% selBUs[i])
   # p1 <- makeG0(myGraph,"genotipo","Nota")
   # p2 <- makeH0(myGraph,"Nota")
@@ -435,7 +450,7 @@ Resumo dos locais
 ```{r tabelaLoc, echo=FALSE}
 
 # Escolhendo alguns locais especificos via análise grafica 
-# addBU <- c("BC02")
+# addBU <- selBUs
 # addBU <- c("BC47","BC33","BC31","BC08")
 
 if(exists("addBU")==T){
@@ -483,19 +498,28 @@ nomeConjuntaGenotipos <- paste0("../output/conjunta_",myHB,"_CS_",Sys.Date(),".x
 writexl::write_xlsx(conjuntaGenotipos,nomeConjuntaGenotipos)
 
 
+
+
+
 myCandidato <- allData_hb %>% filter(genotipo %in% myHB, trait == "COSTR") #, BU %in% selBUs) 
 myCandidato$Nota <- as.numeric(myCandidato$Nota)
-myCandidato$year <- as.numeric(myCandidato$year)
+myCandidato$year <- as.factor(myCandidato$year)
 
 
+unique(myCandidato$BU)
 
 library(tidyverse)
 library(hrbrthemes)
 library(viridis)
 
 
-data2 <- data.frame(year = myCandidato$year, Nota = myCandidato$Nota)
+data2 <- data.frame(year = myCandidato$year, Nota = myCandidato$Nota,
+                    season = myCandidato$season)
 data2$year <- as.factor(data2$year)
+data2$season <- as.factor(data2$season)
+data2 <- na.omit(data2)
+
+
 # Plot
 data2 %>%
   ggplot( aes(x=year, y=Nota, fill=year)) +
@@ -509,9 +533,17 @@ data2 %>%
       plot.title = element_text(size=11)
     ) +
   scale_y_continuous(limits = c(0,9),breaks = c(0:9)) +
-    ggtitle(paste0("Notas Enfezamento ", myHB)) +
+    ggtitle(paste0("Notas Enfezamento:", myHB)) +
     xlab("")
+  
 
+p2 <- ggplot(data2, aes(x=year, y=Nota, fill=season)) + 
+    geom_boxplot() +
+  ggtitle(paste0("Notas Enfezamento ", myHB)) +
+  scale_y_continuous(limits = c(0,9),breaks = c(0:9)) +
+    facet_wrap(~year, scale="free")
+
+p2
 
 
 ```
@@ -634,7 +666,10 @@ dataMedia <- dataMedia[-1,]
 dataBU <- dataBU[-1,]
 dataMedia$stage <- gsub("X","",dataMedia$stage)
 dataBU$stage <- gsub("X","",dataBU$stage)
+dataBU$BU <- gsub("X","",dataBU$BU)
 
+dataBU <- na.omit(dataBU)
+dataMedia <- na.omit(dataMedia)
 
 # salvando em excel
 writexl::write_xlsx(dataMedia,nomeSalvar)

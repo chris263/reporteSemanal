@@ -2,7 +2,7 @@
 
 library(stringr)
 read_fun <- function(inLista){
-  # inLista = filenames
+  inLista = filenames
   finalData <- data.frame(TPP=NA,
                           local=NA,
                           genotipo=NA,
@@ -24,8 +24,9 @@ read_fun <- function(inLista){
                           year=NA
   )
 
+
   for(i in 1:length(inLista)){
-    # i=1
+    # i=2
     inFile <- inLista[i]
     # inFile <- gsub(pattern = "../",replacement = "",x = inFile,fixed = T)
 
@@ -47,6 +48,7 @@ read_fun <- function(inLista){
 
     count = 1
     for(i in 1:length(selNames)){
+      # i=1
       # tem que rodar o loop completo para renomear todas as colunas corretamente
       posName <- match("TRUE",str_detect(nomesCol,selNames[i]))
       if(is.na(posName==T)){
@@ -75,10 +77,11 @@ read_fun <- function(inLista){
 
 
     newData$BU <- stri_sub(newData$local, -4) # capturando as BUs
-
     newData$stg <- as.numeric(stri_sub(newData$local, -7,-7))
     newData$stg <- gsub(8,6,newData$stg) # transformando estagio 8 em 6
-    newData$stg <- gsub("L",4,newData$stg)
+    newData$stg[is.na(newData$stg)] <- 4 # Substituindo NA por estagio 4
+
+    newData$stg <- as.numeric(newData$stg)
 
     newData$season <- substring(newData$local,3,4)
     newData$year <- substring(newData$local,1,2)
@@ -92,7 +95,7 @@ read_fun <- function(inLista){
   finalData$Nota <- gsub(",", "", finalData$Nota)
   # finalData$Nota <- as.numeric(finalData$Nota)
   finalData <- distinct(finalData, barcode, trait,rep,.keep_all = T)
-
+  finalData$BU <- paste0(finalData$year,finalData$season,finalData$BU)
   return(finalData)
 
 }
@@ -139,8 +142,9 @@ filter_locais <- function(inLoc, stg, yrs, crt5, minEnter, maxEnter,inSea){
 
 sinoFun <- function(myData, sinIN){
   # sinIN <- sinN
-  # myData <- checksF
+  # myData <- checksCS
 
+  colnames(myData) <- tolower(colnames(myData))
   colnames(sinIN) <- c("genotipo", "novo")
 
   sinIN$novo <- gsub(" ","",sinIN$novo)
@@ -155,7 +159,7 @@ sinoFun <- function(myData, sinIN){
   myData$genotipo <- gsub("\\.","",myData$genotipo)
   myData$genotipo <- toupper(myData$genotipo)
 
-  if(ncol(myData)>8){
+  if(ncol(myData)>9){
     myData$local <- gsub(" ","",myData$local)
     myData$local <- toupper(myData$local)
   }
@@ -266,11 +270,12 @@ count_fun <- function(inTable,inData, inType){
 
 
 dfFUN <- function( inData, crit){
-  crit = "Yes"
+  # inData = allData_filter
+  # crit = "Yes"
 
   crit = tolower(crit)
   if(crit == "yes"){
-    outData <- inData %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag, local %in% locHy) %>%
+    outData <- inData %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag, BU %in% locHy) %>%
       select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
   }else{
     outData <- inData %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag) %>%
