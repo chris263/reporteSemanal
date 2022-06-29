@@ -278,23 +278,26 @@ makeS1 <- function(inS1){
 }
 
 makeG9 <- function(inDados,grupos){
-  inDados = myGraph
-  grupos = c("MS","MT")
+  # inDados = myGraph
+  # grupos = c("MS","MT","Candidato")
 
   inTPP <- unique(inDados$TPP)
+
+  cand1 <- data.frame(genotipo=myHB,Check=1,Trait = filterTrait$nome[1],Esperado=NA,Tipo="Candidato",TPP=inTPP)
   checksS <- checksF %>% filter(Tipo %in% grupos, TPP == inTPP)
+  checksS <- rbind(checksS, cand1)
+
   inDados <- inDados %>% filter(genotipo %in% checksS$genotipo)
-  try(inDados <- left_join(inDados,checksF,x.by="genotipo", y.by="genotipo"),silent = T)
+  try(inDados <- left_join(inDados,checksS,x.by="genotipo", y.by="genotipo"),silent = T)
   inDados$Nota <- as.numeric(inDados$Nota)
 
   ggplot(inDados, aes(x=genotipo, y=Nota, fill=Tipo)) +
     geom_boxplot() +
-    ggtitle(paste0(unique(inDados$BU)," - PLC", unique(inDados$stg))) +
-    ylim(0,10)+
+    ggtitle(paste0("Local:", unique(inDados$BU)))+#," - PLC", unique(inDados$stg))) +
     scale_y_continuous(breaks=seq(0.0, 10, 1), limits=c(0, 10))+
-    geom_hline(yintercept=3, linetype="dashed", color = "blue", size=1.2) +
-    geom_hline(yintercept=5, linetype="dashed", color = "orange", size=1.2) +
-    geom_hline(yintercept=7, linetype="dashed", color = "red", size=1.2) +
+    geom_hline(yintercept=2, linetype="dashed", color = "blue", size=1.2) +
+    geom_hline(yintercept=4, linetype="dashed", color = "orange", size=1.2) +
+    geom_hline(yintercept=6, linetype="dashed", color = "red", size=1.2) +
 
     coord_flip()
 }
@@ -331,7 +334,7 @@ makePie <- function(inTable, inStage){
               "#99D1E9", "#9391C9","#EEB4A7")
 
   ggplot(inTable, aes(x = "", y = dataPoints, fill = nome)) +
-    ggtitle(paste0("Stage: ",inStage)) +
+    ggtitle(inStage) +
     geom_bar(width = 1, stat = "identity", color = "white") +
     coord_polar("y", start = 0)+
     geom_text(aes(y = lab.ypos, label = dataPoints), color = "white")+

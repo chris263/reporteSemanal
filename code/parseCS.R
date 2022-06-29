@@ -2,7 +2,7 @@
 
 library(stringr)
 read_fun <- function(inLista){
-  # inLista = filenames
+  inLista = filenames
   finalData <- data.frame(TPP=NA,
                           local=NA,
                           genotipo=NA,
@@ -20,11 +20,13 @@ read_fun <- function(inLista){
                           BU=NA,
                           stg=NA,
                           season=NA,
-                          barcode=NA
+                          barcode=NA,
+                          year=NA
   )
 
+
   for(i in 1:length(inLista)){
-    # i=7
+    # i=2
     inFile <- inLista[i]
     # inFile <- gsub(pattern = "../",replacement = "",x = inFile,fixed = T)
 
@@ -46,6 +48,7 @@ read_fun <- function(inLista){
 
     count = 1
     for(i in 1:length(selNames)){
+      # i=1
       # tem que rodar o loop completo para renomear todas as colunas corretamente
       posName <- match("TRUE",str_detect(nomesCol,selNames[i]))
       if(is.na(posName==T)){
@@ -64,30 +67,35 @@ read_fun <- function(inLista){
                            "GRLSR","LFSPR","SCLBR","SRSTR","DLLFR",
                            "range","row","barcode")
 
-    testeTPP <- str_detect(inFile,"..")
-    if(testeTPP == T){
-      newData$TPP <- stri_sub(inFile, 9,13)
-    }else{
-      newData$TPP <- stri_sub(inFile, 6,10)
-    }
+
+    # capturando as TPPs
+    newData$TPP <- stri_sub(newData$local, -4,-3)
+    newData$TPP <- gsub("BL","TPP09",newData$TPP)
+    newData$TPP <- gsub("BU","TPP11",newData$TPP)
+    newData$TPP <- gsub("BT","TPP10",newData$TPP)
+    newData$TPP <- gsub("BC","TPP12",newData$TPP)
+
 
     newData$BU <- stri_sub(newData$local, -4) # capturando as BUs
     newData$stg <- as.numeric(stri_sub(newData$local, -7,-7))
-    ## Contando os data points para WN = safrinha
-    if(unique(newData$TPP)=="TPP12"){
-      newData$season <- "WN"
-    }else{
-      newData$season <- substring(newData$local,3,4)
-      newData <- newData %>% filter(season %in% "WN")
-    }
+    newData$stg <- gsub(8,6,newData$stg) # transformando estagio 8 em 6
+    newData$stg[is.na(newData$stg)] <- 4 # Substituindo NA por estagio 4
+
+    newData$stg <- as.numeric(newData$stg)
+
+    newData$season <- substring(newData$local,3,4)
+    newData$year <- substring(newData$local,1,2)
+    newData$year <- as.numeric(newData$year)
+
     finalData <- rbind(finalData,newData)
+
   }
   finalData <- finalData[-1,]
   finalData <- tidyr::gather(finalData, trait, Nota, COSTR:DLLFR)
   finalData$Nota <- gsub(",", "", finalData$Nota)
   # finalData$Nota <- as.numeric(finalData$Nota)
   finalData <- distinct(finalData, barcode, trait,rep,.keep_all = T)
-
+  finalData$BU <- paste0(finalData$year,finalData$season,finalData$BU)
   return(finalData)
 
 }
@@ -134,11 +142,13 @@ filter_locais <- function(inLoc, stg, yrs, crt5, minEnter, maxEnter,inSea){
 
 sinoFun <- function(myData, sinIN){
   # sinIN <- sinN
-  # myData <- myDF
+  # myData <- checksCS
 
+  colnames(myData) <- tolower(colnames(myData))
   colnames(sinIN) <- c("genotipo", "novo")
 
   sinIN$novo <- gsub(" ","",sinIN$novo)
+  sinIN$novo <- gsub("\\.","",sinIN$novo)
   sinIN$genotipo <- gsub(" ","",sinIN$genotipo)
   sinIN$genotipo <- gsub("\\\\","_",sinIN$genotipo)
   sinIN$genotipo <- gsub("\\.","",sinIN$genotipo)
@@ -146,13 +156,25 @@ sinoFun <- function(myData, sinIN){
 
   myData$genotipo <- gsub(" ","", myData$genotipo)
   myData$genotipo <- gsub("\\\\","_", myData$genotipo)
+  myData$genotipo <- gsub("\\.","",myData$genotipo)
   myData$genotipo <- toupper(myData$genotipo)
 
+  if(ncol(myData)>9){
+    myData$local <- gsub(" ","",myData$local)
+    myData$local <- toupper(myData$local)
+  }
+
+
   for( i in 1:nrow(sinIN)){
-    # i=4
+    # i=30
     # print(i)
     myOld <- sinIN$genotipo[i]
     myNew <- sinIN %>% filter(genotipo == myOld) %>% dplyr::select(novo)
+
+    if(nrow(myNew)>1){
+      cat("Genotipo ", myOld," possui mais de 1 sinonimo","\n")
+      next
+    }
     getPosition <- grep(myOld,myData$genotipo)
 
     myData$genotipo <- replace(myData$genotipo, getPosition, myNew)
@@ -244,4 +266,22 @@ count_fun <- function(inTable,inData, inType){
   }
 
   return(inTable)
+}
+
+
+dfFUN <- function( inData, crit){
+  # inData = allData_filter
+  # crit = "Yes"
+
+  crit = tolower(crit)
+  if(crit == "yes"){
+    outData <- inData %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag, BU %in% locHy) %>%
+      select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
+  }else{
+    outData <- inData %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag) %>%
+      select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
+
+  }
+  return(outData)
+
 }
