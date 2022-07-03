@@ -282,8 +282,14 @@ makeG9 <- function(inDados,grupos){
   # grupos = c("MS","MT","Candidato")
 
   inTPP <- unique(inDados$TPP)
+  inSeas <- unique(inDados$season)
 
-  cand1 <- data.frame(genotipo=myHB,Check=1,Trait = filterTrait$nome[1],Esperado=NA,Tipo="Candidato",TPP=inTPP)
+  if(exists("myHB")==F){
+    cand1 <- data.frame(genotipo="NA",Check=1, Season=inSeas, Trait = filterTrait$nome[1],Esperado=NA,Tipo="Candidato",TPP=inTPP)
+  }else{
+    cand1 <- data.frame(genotipo=myHB,Check=1,Season=inSeas, Trait = filterTrait$nome[1],Esperado=NA,Tipo="Candidato",TPP=inTPP)
+  }
+
   checksS <- checksF %>% filter(Tipo %in% grupos, TPP == inTPP)
   checksS <- rbind(checksS, cand1)
 
@@ -331,7 +337,7 @@ makePie <- function(inTable, inStage){
 
 
   mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF",
-              "#99D1E9", "#9391C9","#EEB4A7")
+              "#99D1E9", "#9391C9","#EEB4A7", "#A77264")
 
   ggplot(inTable, aes(x = "", y = dataPoints, fill = nome)) +
     ggtitle(inStage) +

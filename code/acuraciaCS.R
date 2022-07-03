@@ -3,7 +3,9 @@ classLocations <- function(preAll, checks){
   # preAll <- preBLUEs_BU
   # checks <- checksF
 
-  colnames(checks) <- c("genotipo","Check","Trait","Esperado","Tipo","TPP","valor" )
+  checksF$Esperado[checksF$genotipo=="K9606VIP3"] <- 5
+
+  # colnames(checks) <- c("genotipo","Check","Trait","Esperado","Tipo","TPP","valor" )
   phenoAll <- c()
   preAll <- preAll%>%mutate(Esperado = 0)
   preAll <- preAll%>%mutate(Check = 0)
@@ -23,7 +25,8 @@ classLocations <- function(preAll, checks){
   # Loop para separar por check
   for(i in 1:length(myCheck)){
     # i=1
-    # cat("Genotipo ", myCheck[i], i, "\n")
+    cat("Genotipo ", myCheck[i], i, "\n")
+
     checkPheno <- preAll %>% filter(genotipo == myCheck[i])
 
     if(nrow(checkPheno)>0){
@@ -84,9 +87,12 @@ classLocations <- function(preAll, checks){
     # i=1
     # cat("Local: ",i,nomesLocais[i],"\n")
     # Filtrando por local
-    selectedLocal <- phenoAll %>% filter(local == nomesLocais[i])
 
-    checksTPP <- selectedLocal %>% filter(genotipo %in% checks$genotipo, TPP == unique(selectedLocal$TPP))
+    selectedLocal <- phenoAll %>% filter(local == nomesLocais[i])
+    testSeason <- unique(stri_sub(selectedLocal$local, 3,4))
+    selChecks <- checks %>% filter(Season %in% testSeason, TPP == unique(selectedLocal$TPP))
+    checksTPP <- selectedLocal %>% filter(genotipo %in% selChecks$genotipo)
+
     classFinal$Local[i] <- nomesLocais[i]
 
     #Verificando se possui checks para as 4 classes
@@ -134,6 +140,7 @@ classLocations <- function(preAll, checks){
   }
   classFinal$TPP <- unique(selectedLocal$TPP)
   classFinal <- classFinal %>% arrange(desc(Desvio))
+  classFinal <- na.omit(classFinal)
   return(classFinal)
 }
 

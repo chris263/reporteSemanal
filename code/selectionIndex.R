@@ -30,10 +30,10 @@ cleaning_data <- function(inFile, crit){
 }
 
 local_blup <- function(inLocal, crt4, inDFF, inType){
-  # inLocal = posDfLocal$local
+  # inLocal = posDfTrial$local
   # crt4="no"
   # inDFF <- myDFB
-  # inType = "BU"
+  # inType = "trial"
 
   inDFF$Nota <- as.numeric(inDFF$Nota)
   resumoLoc <- data.frame(local = c(1:length(inLocal)),H2N=rep(0,length(inLocal)),
@@ -46,7 +46,8 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
 
 
   for(i in 1:length(inLocal)){
-    # i=6
+    # i=4
+    # print(i)
     BLUPN <- c()
     BLUEY <- c()
 
@@ -90,6 +91,7 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
 
     options(error = NULL)
     if (testeVAR == 0){
+      next
       # Guardando os dados
       resumoLoc$local[i] <- inLocal[i]
       resumoLoc$H2N[i] <- 0
@@ -97,7 +99,7 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
       genotipos <- unique(selectedLoc$genotipo)
       BLUPN <- data.frame(blueN=rep(selectedLoc$Nota[1],length(genotipos)),
                                    local=rep(unique(selectedLoc$local),length(genotipos)),
-                                   genotipo=genotipos,TPP=selectedLoc$TPP)
+                                   genotipo=genotipos,TPP=rep(unique(selectedLoc$TPP)), length(genotipos))
     }else{
 
       selectedLoc$rep <- as.factor(selectedLoc$rep)
@@ -310,12 +312,12 @@ selectionIndex <- function(inModelo, inWgt){
 }
 
 
-ranking_data <- function(inBlup,inDFF,cr2,corr2, indexSel){
-  # inBlup<-finalBLUP
-  # inDFF<-altaP_DF
-  # cr2<-duasT
+ranking_data <- function(inBlup,inDFF,cr2, indexSel){
+  inBlup<- modeloBU
+  inDFF<-altaPPBU
+  cr2<-duasT
   # corr2 <- corrl
-  # indexSel <- pesos
+  indexSel <- pesos
 
   # Organizando o Blup para Nota
   if(length(unique(inDFF$local))>1){
@@ -367,89 +369,49 @@ ranking_data <- function(inBlup,inDFF,cr2,corr2, indexSel){
   return(preResult)
 }
 
-qualityGeno <- function(entrada, retd, cr3, crt6){
-  # entrada <- dadosGenoLoc
-  # retd <- resultados
-  # cr3 <- duasT
-  # crt6 <- minLoc
+qualityGeno <- function(entrada, inLocal, minLoc){
+  # entrada <- genLoc
+  # inLocal <-
+  # minLoc <- 3
 
-  f10 <- entrada[1,] # 1 linha adicionada apenas para criar o df.
-  f10$nLocais <- as.numeric(0)
-  f10$genoQC <- as.numeric(0)
+  f1 <- entrada %>% filter(local %in% inLocal)
+  countGeno <- data.frame(count(f1, f1$genotipo))
+  meanACC <- data.frame(tapply(f1$Acuracia,f1$genotipo,mean,na.rm=T))
+  meanACC$genotipo <- rownames(meanACC)
+  colnames(meanACC) <- c("Acuracia","genotipo")
+  meanACC <- meanACC %>% select(genotipo,Acuracia)
 
-  f0 <- unique(entrada$genotipo)
+  meanBLUE <- data.frame(tapply(f1$blueN,f1$genotipo,mean,na.rm=T))
+  meanBLUE$genotipo <- rownames(meanBLUE)
+  colnames(meanBLUE) <- c("blueN","genotipo")
+  meanBLUE <- meanBLUE %>% select(genotipo,blueN)
 
-  for(i in 1:length(f0)){
-    # i=2
-    nomeGenotipo <- f0[i]
-    f1 <- entrada %>% filter(genotipo == nomeGenotipo) %>% filter(Rep ==1)
-    nLinhas <- length(unique(f1$local))
+  f2 <- left_join(meanACC, meanBLUE, by=c("genotipo"="genotipo"))
 
-    f2 <- f1[1,]
-    f2$nLocais <- as.numeric(nLinhas)
-    f2$genoQC <- as.numeric(0)
-
-    # Capturando as medias de acuracia
-    f3 <- entrada %>% filter(genotipo == nomeGenotipo)
-
-    f3m <- tapply(f3$Acuracia, f3$genotipo,mean, na.omit=T)
-
-    if(nLinhas > 0){
-    f2$genoQC <- round(f3m[[1]]*(1-(1/2^(nLinhas))),3)
-    }else{
-      f2$genoQC[1] <- "NA"
-    }
-
-    # if(nLinhas > crt6){
-    #   f2$genoQC[1] <- round(sum(as.numeric(f1$Acuracia))/nLinhas,2)
-    # }else if (nLinhas > 0 && nLinhas <= crt6){
-    #   accT <- f1$Acuracia
-    #   accTF <- accT[1:nLinhas]
-    #   f2$genoQC[1] <- round(sum(as.numeric(accTF))/crt6,2)
-    # }else if (entrada$nLocais[i] == 0){
-    #   f2$genoQC[1] <- "NA"
-    # }
-
-    f10 <- rbind(f10,f2)
-
-  }
-
-  f10 <- f10[-1,] # Retira a primeira linha que adicionei apenas para criar o df.
-
-  preFINAL <- left_join(f10,retd,by=c("genotipo"="genotipo"))
-
-  if(cr3 == "yes"){
-    resFINAL <- data.frame(preFINAL$genotipo, as.numeric(preFINAL$blupNota), as.numeric(preFINAL$blupYield),
-                           preFINAL$Indice,preFINAL$nLocais, preFINAL$genoQC)
-    colnames(resFINAL) <- c("genotipo","blupNota","blupYield","Indice","nLocais","Acuracia")
-    resFINAL$blupNota <- floor(resFINAL$blupNota)
-    resFINAL$blupYield <- round(resFINAL$blupYield,2)
-    resFINAL <- resFINAL %>% arrange(desc(Indice))
-  }else{
-    resFINAL <- data.frame(preFINAL$genotipo, as.numeric(preFINAL$blupNota), blupYield=0,
-                           Indice=0,preFINAL$nLocais, preFINAL$genoQC)
-    colnames(resFINAL) <- c("genotipo","blupNota","blupYield","Indice","nLocais","Acuracia")
-    resFINAL$blupNota <- round(resFINAL$blupNota,0)
-    resFINAL <- resFINAL %>% arrange(blupNota)
-  }
-  resFINAL$Class <- NA
+  f3 <- left_join(f2,countGeno,by=c("genotipo"="f1.genotipo"))
+  f3$genoQC <- f3$Acuracia*1*f3$n/minLoc
+  #
+  # f2$genoQC <- round(f2$n*(1/2^f2$n),3)
+  #
+  resFINAL <- f3
+  resFINAL$Classe <- NA
   for(i in 1:nrow(resFINAL)){
-    if(is.na(resFINAL$blupNota[i])){
+    if(is.na(resFINAL$blueN[i])){
     }else{
-      if(resFINAL$blupNota[i] < 3){
-        resFINAL$Class[i] <- "T"
-      }else if(resFINAL$blupNota[i]>=3 && resFINAL$blupNota[i]<5){
-        resFINAL$Class[i] <- "MT"
-      }else if(resFINAL$blupNota[i]>=5 && resFINAL$blupNota[i]<=6){
-        resFINAL$Class[i]<- "MS"
-      }else if(resFINAL$blupNota[i]>6){
-        resFINAL$Class[i] <- "S"
+      if(resFINAL$blueN[i] < 3 ){
+        resFINAL$Classe[i] <- "T"
+      }else if(resFINAL$blueN[i]>2 && resFINAL$blueN[i]<5){
+        resFINAL$Classe[i] <- "MT"
+      }else if(resFINAL$blueN[i]>=5 && resFINAL$blueN[i]<=6){
+        resFINAL$Classe[i]<- "MS"
+      }else if(resFINAL$blueN[i]>6){
+        resFINAL$Classe[i] <- "S"
       }
     }
-
   }
 
-  # resFINAL <<- na.omit(resFINAL)
+  resFINAL$blueN <- round(resFINAL$blueN,1)
+  resFINAL <- resFINAL %>% select(genotipo,Acuracia,blueN,Classe)
   return(resFINAL)
 }
 
