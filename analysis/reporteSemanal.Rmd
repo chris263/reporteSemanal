@@ -44,7 +44,7 @@ saveChecks <- paste0("../output/checksLoc_",Sys.Date(),".xlsx")
 
 
 ## Carregando RData já processado
-load("../data/database_2022-06-29.RData")
+load("../data/database_2022-07-02.RData")
 
 
 ## Usar o formato csv para evitar problemas nos dados
@@ -59,15 +59,15 @@ load("../data/database_2022-06-29.RData")
 
 ## unique(allData$TPP)
 ## Carregando arquivos auxiliares de checks e sinonimos
-# checksCS <- readxl::read_xlsx("../data/renataMilho28062022.xlsx", sheet="Checks")
+# checksCS <- readxl::read_xlsx("../data/renataMilho01072022.xlsx", sheet="Checks")
 # checksCS$Esperado <- as.numeric(checksCS$Esperado)
-# sinN <- readxl::read_xlsx("../data/renataMilho28062022v2.xlsx", sheet="Sinonimos")
+# sinN <- readxl::read_xlsx("../data/renataMilho01072022.xlsx", sheet="Sinonimos")
 # sinN <- distinct(sinN, genotipo,Novo)
-# 
+
 # 
 # errorMessage=FALSE
 # 
-# tryCatch(tidyr::gather(checksCS,TPP,valor,6:9),
+# tryCatch(tidyr::gather(checksCS,TPP,valor,7:10),
 #  error = function(e)
 #  errorMessage <<- TRUE)
 # 
@@ -77,20 +77,24 @@ load("../data/database_2022-06-29.RData")
 #                                   TPP11=1,
 #                                   TPP12=1)
 # 
-#   checksCS <- tidyr::gather(checksCS,TPP,valor,6:9)
+#   checksCS <- tidyr::gather(checksCS,TPP,valor,7:10)
 # }else{
-#   checksCS <- tidyr::gather(checksCS,TPP,valor,6:9)
+#   checksCS <- tidyr::gather(checksCS,TPP,valor,7:10)
 # }
 
-# 
+
 ## Corrigindo sinonimos
 # allData <- sinoFun(allData,sinN)
 # checksCS <- sinoFun(checksCS,sinN)
-#  
-## Selecionando o trait que vamos trabalhar
-# tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR"),
-                          # nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
-                          #        "bipolaris","ferrugem","diplodia"))
+# 
+# colnames(allData)[1] <- "TPP"
+# colnames(allData)[8] <- "BU"
+# colnames(allData)[14] <- "Nota"
+
+# # Selecionando o trait que vamos trabalhar
+# tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR", "PRMDN"),
+# nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
+#        "bipolaris","ferrugem","diplodia","plantasMortas"))
 
 ## Save multiple objects
 # save(allData, checksCS, tableTraits, file = paste0("../data/database_",Sys.Date(),".RData"))
@@ -105,20 +109,19 @@ myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
 
 myStag <- c(4,5,6) # Aqui seleciona o estagio
 
-allData_filter <- allData %>% filter(TPP %in% myTPP)
-
+removeBU <- c("22WN4BC33", "22WN5BC33","22WN6BC33")
+`%!in%` <- Negate(`%in%`)
+allData_filter <- allData %>% filter(TPP %in% myTPP, BU %!in% removeBU )
 
 #Analisar yiedl junto?
 duasT <- "no"
 
 #limites
-limiteAlta <- -0.5 #Desvio a partir de 0 passa a ser alta
+limiteAlta <- 0 #Desvio a partir de 0 passa a ser alta
 limiteBaixa <- -2 #Desvio entre -2 e 0 é media pressao
 
 # quality control
 qControl <- 0.1 #trashold
-
-
 
 # Contador de datapoints
 dataPointsTable<- count_fun(tableTraits,allData,"local") # arquivo parseCS.R
@@ -128,6 +131,7 @@ makePie(dataPointsTable, paste0("PLC: 4,5,6"))
 
 writexl::write_xlsx(dataPointsTable, "../output/countAllData.xlsx" )
 
+
 ```
 
 ## Checando candidatos especificos
@@ -136,8 +140,10 @@ writexl::write_xlsx(dataPointsTable, "../output/countAllData.xlsx" )
 
 # unique(allData$stg)
 
-myHB <- "SXC1432ZL0" # sequiser o 6101ZL - nao precisa escrever o nome todo
+myHB <- "SZF6212ZL0" # sequiser o 6101ZL - nao precisa escrever o nome todo
 allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
+
+
 
 # allData_hb <- allData_hb %>% filter(year %in% c(21,22))
 
@@ -161,25 +167,17 @@ Aqui acontece ...
 
 # Na funcao abaixo usa yes para analisar um hibrido especifico
 # Usa-se nao para análise generica
-myDF <- dfFUN(allData_filter,"yes")
+myDF <- dfFUN(allData_filter,"no")
 myDF <- na.omit(myDF)
 
 # Preparando os checks
 checksCS$trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$trait)
+colnames(checksCS)[7] <- "TPP"
 checksCS$TPP <- toupper(checksCS$TPP)
 checksF <- checksCS %>% filter(trait %in% filterTrait$nome[1], TPP %in% myTPP, valor == 1 )
-#Preparando o arquivo com checks
-checksF$genotipo <- gsub(" ", "", checksF$genotipo, fixed = TRUE)
-checksF$Genotipo <- toupper(checksF$Genotipo)
 
-colnames(checksF) <- c("genotipo", "Check", "Trait", "Esperado", "Tipo")
-
-# checksF<-sinoFun(checksF,sinN)
-# Corrigindo nome das colunas
-checksF <- checksF[,-7]
-colnames(checksF)[6] <- "TPP"
-checksF <- checksF %>% filter(TPP %in% myTPP)
-
+colnames(checksF) <- c("genotipo", "Check", "Season","Trait", "Esperado", "Tipo","TPP")
+checksF <- checksF[,-8]
 
 
 #Contando por genotipo
@@ -221,11 +219,9 @@ colnames(contaChecks) <- c("check","numeroLocais")
 contaChecks <- contaChecks %>% arrange(desc(numeroLocais))
 
 checksFora <- subset(checksF,!(checksF$genotipo %in% contaChecks$check))
-colnames(checksFora)[6] <- "TPP"
 
-if(length(checksFora) == 7){
-  checksFora <- checksFora[,-7]
-}
+# colnames(checksFora)[7] <- "TPP"
+
 
 knitr::kable(checksFora)
 knitr::kable(contaChecks)
@@ -408,7 +404,7 @@ writexl::write_xlsx(classeFinalTrialBU,nomeClasseLocais)
 # Preparando o arquivo para o shiny
 bluesBU <- BLUEs %>% filter(type=="BU") %>% select(genotipo,local,TPP,blueN)
 genLoc <- left_join(bluesBU,finalTabelaBU,by=c("local"="Local"))
-genLoc <- genLoc %>% select(genotipo,local,TPP,blueN,classe,stage)
+genLoc <- genLoc %>% select(genotipo,local,TPP,blueN,classe,stage, Acuracia)
 
 writexl::write_xlsx(genLoc,paste0("../output/",myHB,"_genoLoc-",Sys.Date(),".xlsx"))
 
@@ -424,13 +420,13 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 
 
 require(gridExtra)
-selBUs <- c("22WNBC33","22WNBC31")
-selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Media")]
+# selBUs <- c("22WN6BU35","21SU6BU45","21SU6BU51")
+selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Alta")]
 myDF6 <- myDF %>% filter(BU %in% selBUs)
 # match("TRUE", str_detect(finalTabelaBU$Local,"BU35"))
 
 for(i in 1:length(selBUs)){
-  i=1
+  # i=1
   myGraph <- myDF6 %>% filter(BU %in% selBUs[i])
   # p1 <- makeG0(myGraph,"genotipo","Nota")
   # p2 <- makeH0(myGraph,"Nota")
@@ -450,8 +446,7 @@ Resumo dos locais
 ```{r tabelaLoc, echo=FALSE}
 
 # Escolhendo alguns locais especificos via análise grafica 
-# addBU <- selBUs
-# addBU <- c("BC47","BC33","BC31","BC08")
+addBU <- c("21SU6BU45","21SU6BU51")
 
 if(exists("addBU")==T){
   finalTabelaBU$classe[finalTabelaBU$Local %in% addBU] <- "Alta"
@@ -465,23 +460,23 @@ trialAlta <- finalTabelaTrial %>% filter(classe == "Alta") %>% dplyr::select(Loc
 altaPPBU <- myDF %>% filter(BU %in% locAlta$Local)
 altaPPTrial <- myDF %>% filter(local %in% trialAlta$Local)
 
-modeloBU <- joint_blup(altaPPBU, "no") # yes = local efeito fixo, no = local nao entra como efeito
+modeloBU <- joint_blup(altaPPBU, "yes") # yes = local efeito fixo, tem que ter +1 como alta
 modeloBU$type <- "BU"
 modeloTrial <- joint_blup(altaPPTrial, "no") 
 modeloTrial$type <- "trial"
 
-if(length(locAlta)>0){
+if(length(locAlta$Local)>0){
   genoAltaBU <- BLUEs %>% filter(type == "BU", local %in% locAlta$Local)
   genoAltaBU$blueN <- round(genoAltaBU$blueN,2)
-  # DT::datatable(genoAltaBU, options=list(search=list(regex=TRUE, search = '')))
+  DT::datatable(genoAltaBU, options=list(search=list(regex=TRUE, search = '')))
   # write.csv(genoAlta,"data/genotiposClasses.csv", row.names = F)
 
 }
 
-if(length(trialAlta)>0){
+if(length(trialAlta$Local)>0){
   genoAltaTrial <- BLUEs %>% filter(type == "trial", local %in% trialAlta$Local)
   genoAltaTrial$blueN <- round(genoAltaTrial$blueN,2)
-  # DT::datatable(genoAlta, options=list(search=list(regex=TRUE, search = '')))
+  DT::datatable(genoAltaTrial, options=list(search=list(regex=TRUE, search = '')))
   # write.csv(genoAlta,"data/genotiposClasses.csv", row.names = F)
 
 }
@@ -490,14 +485,18 @@ classeFinalGenotipos <- rbind(genoAltaBU,genoAltaTrial)
 classeFinalGenotipos <- genoAltaBU
 # Salvando no excel
 nomeClasseGenotipos <- paste0("../output/classeGenotiposCS_",Sys.Date(),".xlsx")
+
 DT::datatable(classeFinalGenotipos, options=list(search=list(regex=TRUE, search = '')))
 writexl::write_xlsx(classeFinalGenotipos,nomeClasseGenotipos)
 
 conjuntaGenotipos <- rbind(modeloBU,modeloTrial)
-nomeConjuntaGenotipos <- paste0("../output/conjunta_",myHB,"_CS_",Sys.Date(),".xlsx")
-writexl::write_xlsx(conjuntaGenotipos,nomeConjuntaGenotipos)
 
 
+## Final dos candidatos
+resultadoFINAL <- qualityGeno(genLoc,locAlta$Local,3)
+DT::datatable(resultadoFINAL, options=list(search=list(regex=TRUE, search = '')))
+nomeConjuntaGenotipos <- paste0("../output/final_","todos_CS_",Sys.Date(),".xlsx")
+writexl::write_xlsx(resultadoFINAL,nomeConjuntaGenotipos)
 
 
 

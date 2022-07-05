@@ -15,6 +15,7 @@ read_fun <- function(inLista){
                           SCLBR=NA,
                           SRSTR=NA,
                           DLLFR=NA,
+                          PRMDN=NA,
                           range=NA,
                           row=NA,
                           BU=NA,
@@ -24,6 +25,7 @@ read_fun <- function(inLista){
                           year=NA
   )
 
+  posFinal <- finalData
 
   for(i in 1:length(inLista)){
     # i=2
@@ -40,7 +42,7 @@ read_fun <- function(inLista){
     nomesCol <- colnames(readData)
     if(length(nomesCol)==1){ readData <- read.csv(file=inFile, header=T, as.is=1, sep=";")}
 
-    selNames <- c("TPP","EXTID","ABBRC","PLTID","REPNO","COSTR","HELMR","GRLSR","LFSPR","SCLBR","SRSTR","DLLFR","STRNG","STROW","PSS.BARCD")
+    selNames <- c("TPP","EXTID","ABBRC","PLTID","REPNO","COSTR","HELMR","GRLSR","LFSPR","SCLBR","SRSTR","DLLFR","PRMDN","STRNG","STROW","PSS.BARCD")
     checkNames <- match("TRUE",str_detect(nomesCol,paste(selNames[2:5],collapse = "|")))
     if(is.na(checkNames)==T){stop("Stop! Esta faltando umas das colunas principais, checar arquivo.")}
 
@@ -64,7 +66,7 @@ read_fun <- function(inLista){
     newData <- newData %>% select(all_of(selNames))
 
     colnames(newData) <- c("TPP","local","genotipo","plotID","rep","COSTR","HELMR",
-                           "GRLSR","LFSPR","SCLBR","SRSTR","DLLFR",
+                           "GRLSR","LFSPR","SCLBR","SRSTR","DLLFR","PRMDN",
                            "range","row","barcode")
 
 
@@ -76,27 +78,50 @@ read_fun <- function(inLista){
     newData$TPP <- gsub("BC","TPP12",newData$TPP)
 
 
-    newData$BU <- stri_sub(newData$local, -4) # capturando as BUs
-    newData$stg <- as.numeric(stri_sub(newData$local, -7,-7))
-    newData$stg <- gsub(8,6,newData$stg) # transformando estagio 8 em 6
-    newData$stg[is.na(newData$stg)] <- 4 # Substituindo NA por estagio 4
-
-    newData$stg <- as.numeric(newData$stg)
-
-    newData$season <- substring(newData$local,3,4)
-    newData$year <- substring(newData$local,1,2)
-    newData$year <- as.numeric(newData$year)
+    newData$BU <- NA
+    newData$stg <- NA
+    newData$season <- NA
+    newData$year <- NA
 
     finalData <- rbind(finalData,newData)
 
   }
   finalData <- finalData[-1,]
-  finalData <- tidyr::gather(finalData, trait, Nota, COSTR:DLLFR)
-  finalData$Nota <- gsub(",", "", finalData$Nota)
+
+  todosLoc <- unique(finalData$local)
+  for (i in 1:length(todosLoc)) {
+    # i=325
+    filterLoc <- finalData %>% filter(local %in% todosLoc[i])
+    filterLoc$season <- substring(filterLoc$local,3,4)
+    filterLoc$stg <- str_sub(filterLoc$local,-7,-7)
+    filterLoc$stg <- gsub(8,6,filterLoc$stg)
+    filterLoc$stg <- gsub("L",4,filterLoc$stg)
+    checkStage <- unique(filterLoc$stg)
+
+    if(grepl("\\D",checkStage) == T){
+      cat("Alterando stage local ", todosLoc[i],"\n")
+      filterLoc$stg <- str_sub(filterLoc$local,-6,-6)
+    }
+
+    filterLoc$year <- str_sub(filterLoc$local, 1,2)
+    filterLoc$BU <- paste0(filterLoc$year,filterLoc$season,filterLoc$stg,str_sub(filterLoc$local,-4,-1))
+
+    posFinal <- rbind(posFinal, filterLoc)
+  }
+
+  posFinal <- posFinal %>% filter(stg %in% c(4,5,6))
+
+  posFinal <- posFinal[-1,]
+  posFinal <- tidyr::gather(posFinal, trait, Nota, COSTR:PRMDN)
+  posFinal$Nota <- as.numeric(posFinal$Nota)
+  posFinal$year <- as.numeric(posFinal$year)
+  posFinal$stg <- as.numeric(posFinal$stg)
+
   # finalData$Nota <- as.numeric(finalData$Nota)
-  finalData <- distinct(finalData, barcode, trait,rep,.keep_all = T)
-  finalData$BU <- paste0(finalData$year,finalData$season,finalData$BU)
-  return(finalData)
+  posFinal <- distinct(posFinal, barcode, trait,rep,.keep_all = T)
+
+
+  return(posFinal)
 
 }
 
@@ -275,10 +300,10 @@ dfFUN <- function( inData, crit){
 
   crit = tolower(crit)
   if(crit == "yes"){
-    outData <- inData %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag, BU %in% locHy) %>%
+    outData <- inData %>% filter(trait %in% filterTrait$codigo[1], BU %in% locHy) %>%
       select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
   }else{
-    outData <- inData %>% filter(trait %in% filterTrait$codigo[1], stg %in% myStag) %>%
+    outData <- inData %>% filter(trait %in% filterTrait$codigo[1]) %>%
       select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
 
   }
