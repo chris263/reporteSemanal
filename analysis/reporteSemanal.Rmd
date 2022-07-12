@@ -148,7 +148,7 @@ writexl::write_xlsx(dataPointsTable, "../output/countAllData.xlsx" )
 
 # unique(allData$stg)
 
-myHB <- "SZF6212ZL0" # sequiser o 6101ZL - nao precisa escrever o nome todo
+myHB <- "SXC2241ZL0" # sequiser o 6101ZL - nao precisa escrever o nome todo
 allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
 
 
