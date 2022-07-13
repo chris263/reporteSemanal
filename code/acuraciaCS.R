@@ -3,9 +3,9 @@ classLocations <- function(preAll, checks){
   # preAll <- preBLUEs_BU
   # checks <- checksF
 
-  checksF$Esperado[checksF$genotipo=="K9606VIP3"] <- 5
-
+  # checksF$Esperado[checksF$genotipo=="K9606VIP3"] <- 5
   # colnames(checks) <- c("genotipo","Check","Trait","Esperado","Tipo","TPP","valor" )
+
   phenoAll <- c()
   preAll <- preAll%>%mutate(Esperado = 0)
   preAll <- preAll%>%mutate(Check = 0)
@@ -191,32 +191,49 @@ finalClass<- function(enterTable, qualC, limA, limB){
 
 }
 
-joint_analysis <- function(inBLUE,locP){
-  # inBLUE = altaPP
+joint_sommer <- function(inBLUE,locP){
+  # inBLUE = altaPPBU
+  # locP = "yes"
+
+
   library(sommer)
-  inBLUE$localGeno <- paste0(inBLUE$local,inBLUE$genotipo)
+  inBLUE$BUGeno <- paste0(inBLUE$BU,"_",inBLUE$genotipo)
+  inBLUE$Nota <- as.numeric(inBLUE$Nota)
+
   if(locP=="yes"){
-    modeloConjunto <- mmer(blueN ~ local,
-                           random= ~ vs(genotipo, Gtc=unsm(1)) + vs(localGeno, Gtc=unsm(1)),
-                           rcov= ~ vs(units, Gtc=unsm(1)),
-                           # tolparinv = 1e100000,
+    modeloSommer <- mmer(Nota ~ BU,
+                           random= ~ vsr(genotipo, Gtc=unsm(1)) + vsr(BUGeno, Gtc=unsm(1)),
+                           rcov= ~ vsr(units, Gtc=unsm(1)),
                            data=inBLUE, verbose = FALSE)
   }else{
-    modeloConjunto <- mmer(blueN ~ 1,
-                           random= ~ vs(genotipo, Gtc=unsm(1)) + vs(localGeno, Gtc=unsm(1)),
-                           rcov= ~ vs(units, Gtc=unsm(1)),
+    modeloConjunto <- mmer(Nota ~ 1,
+                           random= ~ vsr(genotipo, Gtc=unsm(1)) + vsr(localGeno, Gtc=unsm(1)),
+                           rcov= ~ vsr(units, Gtc=unsm(1)),
                            # tolparinv = 1e100000,
                            data=inBLUE, verbose = FALSE)
   }
+
+
+  teste <- as.data.frame(modeloConjunto$U$`u:genotipo`$Nota)
+  testeS <- as.data.frame(modeloSommer$U$`u:genotipo`$Nota)
+  testeS$genotipo <- rownames(testeS)
+
+  # randef(modeloSommer)
+  # summary(modeloSommer)
+  #
+  # modeloSommer$U$`u:genotipo`
+
   return(modeloConjunto)
 }
 
 joint_blup <- function(inData, locP){
-  # inData = myDF
+  # inData = altaPPBU
+  # locP = "yes"
+
   inData$Nota <- as.numeric(inData$Nota)
 
   if(locP == "yes"){
-    modeloAllNota <- lmer(Nota ~  local + (1| genotipo), data = inData)
+      modeloAllNota <- lmer(Nota ~  BU + (1| genotipo), data = inData)
   }else{
     modeloAllNota <- lmer(Nota ~  1 + (1| genotipo), data = inData)
   }
@@ -237,6 +254,11 @@ joint_blup <- function(inData, locP){
   return(Result)
 
 }
+
+#
+# testeAOV <- aov(Nota ~  year + season + BU + genotipo, data = altaPPBU)
+# anova(testeAOV)
+
 
 
 

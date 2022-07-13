@@ -371,7 +371,7 @@ ranking_data <- function(inBlup,inDFF,cr2, indexSel){
 
 qualityGeno <- function(entrada, inLocal, minLoc){
   # entrada <- genLoc
-  # inLocal <-
+  # inLocal <- selBUs
   # minLoc <- 3
 
   f1 <- entrada %>% filter(local %in% inLocal)
@@ -379,12 +379,12 @@ qualityGeno <- function(entrada, inLocal, minLoc){
   meanACC <- data.frame(tapply(f1$Acuracia,f1$genotipo,mean,na.rm=T))
   meanACC$genotipo <- rownames(meanACC)
   colnames(meanACC) <- c("Acuracia","genotipo")
-  meanACC <- meanACC %>% select(genotipo,Acuracia)
+  meanACC <- meanACC %>% relocate(genotipo, .before = Acuracia)
 
   meanBLUE <- data.frame(tapply(f1$blueN,f1$genotipo,mean,na.rm=T))
   meanBLUE$genotipo <- rownames(meanBLUE)
   colnames(meanBLUE) <- c("blueN","genotipo")
-  meanBLUE <- meanBLUE %>% select(genotipo,blueN)
+  meanBLUE <- meanBLUE %>% relocate(genotipo, .before = blueN)
 
   f2 <- left_join(meanACC, meanBLUE, by=c("genotipo"="genotipo"))
 
@@ -395,23 +395,25 @@ qualityGeno <- function(entrada, inLocal, minLoc){
   #
   resFINAL <- f3
   resFINAL$Classe <- NA
+  resFINAL$blueN <- round(resFINAL$blueN,0)
   for(i in 1:nrow(resFINAL)){
     if(is.na(resFINAL$blueN[i])){
     }else{
-      if(resFINAL$blueN[i] < 3 ){
+      if(resFINAL$blueN[i] <= 2 ){
         resFINAL$Classe[i] <- "T"
-      }else if(resFINAL$blueN[i]>2 && resFINAL$blueN[i]<5){
+      }else if(resFINAL$blueN[i] > 2 && resFINAL$blueN[i] <= 4){
         resFINAL$Classe[i] <- "MT"
-      }else if(resFINAL$blueN[i]>=5 && resFINAL$blueN[i]<=6){
+      }else if(resFINAL$blueN[i] > 4 && resFINAL$blueN[i] <= 6){
         resFINAL$Classe[i]<- "MS"
-      }else if(resFINAL$blueN[i]>6){
+      }else if(resFINAL$blueN[i] > 6){
         resFINAL$Classe[i] <- "S"
       }
     }
   }
 
   resFINAL$blueN <- round(resFINAL$blueN,1)
-  resFINAL <- resFINAL %>% select(genotipo,Acuracia,blueN,Classe)
+  resFINAL$Acuracia <- round(resFINAL$Acuracia,3)
+  resFINAL <- resFINAL %>% dplyr::select(genotipo,Acuracia,blueN,Classe)
   return(resFINAL)
 }
 

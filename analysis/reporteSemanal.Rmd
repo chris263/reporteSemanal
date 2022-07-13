@@ -8,6 +8,8 @@ output:
     mode: selfcontained
 ---
 
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, echo = FALSE)
 ip <- installed.packages()
@@ -109,9 +111,12 @@ myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
 
 myStag <- c(4,5,6) # Aqui seleciona o estagio
 
-removeBU <- c("22WN4BC33", "22WN5BC33","22WN6BC33")
+removeBU <- c("22WN4BC33", "22WN5BC33","22WN6BC33",
+              "22WN4BU35", "22WN5BU35","22WN6BU35")
+
 `%!in%` <- Negate(`%in%`)
 allData_filter <- allData %>% filter(TPP %in% myTPP, BU %!in% removeBU )
+
 
 #Analisar yiedl junto?
 duasT <- "no"
@@ -148,7 +153,7 @@ writexl::write_xlsx(dataPointsTable, "../output/countAllData.xlsx" )
 
 # unique(allData$stg)
 
-myHB <- "SXC2241ZL0" # sequiser o 6101ZL - nao precisa escrever o nome todo
+myHB <- "SZC4141VIP3" # sequiser o 6101ZL - nao precisa escrever o nome todo
 allData_hb <- allData %>% mutate(criteria = str_detect(allData$genotipo,myHB)) %>% filter(criteria == "TRUE") %>% select(!criteria)
 
 
@@ -174,8 +179,8 @@ Aqui acontece ...
 ```{r controle, echo=FALSE, warning=FALSE}
 
 # Na funcao abaixo usa yes para analisar um hibrido especifico
-# Usa-se nao para análise generica
-myDF <- dfFUN(allData_filter,"no")
+# Usa-se `nao` para análise generica
+myDF <- dfFUN(allData_filter,"yes")
 myDF <- na.omit(myDF)
 
 # Preparando os checks
@@ -359,7 +364,7 @@ for(i in 1:length(myStag)){
 
 
 
-listLocTPP <- allData_filter %>% filter(TPP %in% myTPP) %>% select(BU,local,TPP)
+listLocTPP <- allData_filter %>% dplyr::filter(TPP %in% myTPP) %>% dplyr::select(BU,local,TPP)
 listLocBU <- distinct(listLocTPP, BU,TPP)
 listLocTrial <- distinct(listLocTPP, local,TPP)
 
@@ -371,12 +376,14 @@ classifica_BU <- classificaF %>% filter(type=="BU")
 classifica_Trial <- classificaF %>% filter(type=="trial")
 
 # Juntando com os dados de Herdabilidade
+resumoBU <- resumoLocF %>% filter(type=="BU")
+resumoTrial <- resumoLocF %>% filter(type=="trial")
 novaTabela_BU <- left_join(classifica_BU,resumoBU,by=c("Local"="local")) 
-novaTabela_Trial <- left_join(classifica_Trial,resumoBU,by=c("Local"="local")) 
+novaTabela_Trial <- left_join(classifica_Trial,resumoTrial,by=c("Local"="local")) 
 
 novaTabela <- rbind(novaTabela_BU,novaTabela_Trial)
 novaTabela$Desvio <- round(novaTabela$Desvio,3)
-novaTabela <- novaTabela %>% select(Local, classe, Probabilidade, Controles, Desvio,stage.x,
+novaTabela <- novaTabela %>% dplyr::select(Local, classe, Probabilidade, Controles, Desvio,stage.x,
                                     type.x,H2N,H2Y,Acuracia)
 colnames(novaTabela) <- c("Local","classe","Probabilidade","Controles","Desvio",
                           "stage","type","H2N","H2Y","Acuracia")
@@ -399,6 +406,11 @@ finalTabelaTrial <- finalClass(novaTabelaTTrial, qControl, limiteAlta, limiteBai
 
 finalTabela2 <- finalTabela %>% dplyr::select(Local,classe,stage,Controles,Desvio,Acuracia) %>% arrange(desc(Desvio))# Pode Adicionar Acuracia 
 # knitr::kable(finalTabela2)
+finalTabelaBU$H2N <- round(finalTabelaBU$H2N,3)
+finalTabelaTrial$H2N <- round(finalTabelaTrial$H2N,3)
+finalTabelaBU$Probabilidade <- round(finalTabelaBU$Probabilidade,3)
+finalTabelaTrial$Probabilidade <- round(finalTabelaTrial$Probabilidade,3)
+
 DT::datatable(finalTabelaBU, options=list(search=list(regex=TRUE, search = '')))
 DT::datatable(finalTabelaTrial, options=list(search=list(regex=TRUE, search = '')))
 
@@ -410,7 +422,7 @@ classeFinalTrialBU <- rbind(finalTabelaBU,finalTabelaTrial)
 writexl::write_xlsx(classeFinalTrialBU,nomeClasseLocais)
 
 # Preparando o arquivo para o shiny
-bluesBU <- BLUEs %>% filter(type=="BU") %>% select(genotipo,local,TPP,blueN)
+bluesBU <- BLUEs %>% filter(type=="BU") %>% dplyr::select(genotipo,local,TPP,blueN)
 genLoc <- left_join(bluesBU,finalTabelaBU,by=c("local"="Local"))
 genLoc <- genLoc %>% select(genotipo,local,TPP,blueN,classe,stage, Acuracia)
 
@@ -428,8 +440,8 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 
 
 require(gridExtra)
-# selBUs <- c("22WN6BU35","21SU6BU45","21SU6BU51")
-selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Alta")]
+selBUs <- c("22WN6BU07","22WN6BU09","22WN6BU22")
+selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Alta","Media")]
 myDF6 <- myDF %>% filter(BU %in% selBUs)
 # match("TRUE", str_detect(finalTabelaBU$Local,"BU35"))
 
@@ -454,7 +466,9 @@ Resumo dos locais
 ```{r tabelaLoc, echo=FALSE}
 
 # Escolhendo alguns locais especificos via análise grafica 
-addBU <- c("21SU6BU45","21SU6BU51")
+# addBU <- c("21SU6BU45","21SU6BU51")
+addBU <- selBUs
+
 
 if(exists("addBU")==T){
   finalTabelaBU$classe[finalTabelaBU$Local %in% addBU] <- "Alta"
@@ -470,7 +484,7 @@ altaPPTrial <- myDF %>% filter(local %in% trialAlta$Local)
 
 modeloBU <- joint_blup(altaPPBU, "yes") # yes = local efeito fixo, tem que ter +1 como alta
 modeloBU$type <- "BU"
-modeloTrial <- joint_blup(altaPPTrial, "no") 
+modeloTrial <- joint_blup(altaPPTrial, "yes") 
 modeloTrial$type <- "trial"
 
 if(length(locAlta$Local)>0){
@@ -489,8 +503,9 @@ if(length(trialAlta$Local)>0){
 
 }
 
-classeFinalGenotipos <- rbind(genoAltaBU,genoAltaTrial)
+# classeFinalGenotipos <- rbind(genoAltaBU,genoAltaTrial)
 classeFinalGenotipos <- genoAltaBU
+
 # Salvando no excel
 nomeClasseGenotipos <- paste0("../output/classeGenotiposCS_",Sys.Date(),".xlsx")
 
