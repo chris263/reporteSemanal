@@ -128,16 +128,19 @@ limiteBaixa <- -2 #Desvio entre -2 e 0 é media pressao
 # quality control
 qControl <- 0.1 #trashold
 
-# Contador de datapoints
-dataPointsTable<- count_fun(tableTraits,allData,"local") # arquivo parseCS.R
 
+# Contador de datapoints
+
+# Contando dados de 2022
 data2022a <- allData %>% filter(year %in% c(21), season == "SU")
 data2022b <- allData %>% filter(year %in% c(22))
 data2022 <- rbind(data2022a, data2022b)
 
 dataP2022 <- count_fun(tableTraits,data2022,"local") # arquivo parseCS.R
 knitr::kable(dataP2022)
+makePie(dataP2022, paste0("Dados 2022"))
 
+data22 <- count_fun(allData,c(21,22),c("WN","SU"),"all")
 
 knitr::kable(dataPointsTable)
 makePie(dataPointsTable, paste0("PLC: 4,5,6"))
