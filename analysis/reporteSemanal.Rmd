@@ -46,12 +46,12 @@ saveChecks <- paste0("../output/checksLoc_",Sys.Date(),".xlsx")
 
 
 ## Carregando RData já processado
-load("../data/database_2022-07-02.RData")
+load("../data/database_2022-07-19.RData")
 
 
 ## Usar o formato csv para evitar problemas nos dados
 ## Inserir uma coluna em branco no csv
-
+# 
 # filenames <- list.files("../data", pattern=glob2rx("^TPP*.csv$"), full.names=TRUE)
 # print("Confirme os nomes dos arquivos lidos. Esta faltando algum?")
 # print(filenames)
@@ -83,7 +83,7 @@ load("../data/database_2022-07-02.RData")
 # }else{
 #   checksCS <- tidyr::gather(checksCS,TPP,valor,7:10)
 # }
-
+# 
 
 ## Corrigindo sinonimos
 # allData <- sinoFun(allData,sinN)
@@ -100,7 +100,7 @@ load("../data/database_2022-07-02.RData")
 
 ## Save multiple objects
 # save(allData, checksCS, tableTraits, file = paste0("../data/database_",Sys.Date(),".RData"))
- 
+#  
 
 selTrait <- tableTraits$nome[1]
 filterTrait <- tableTraits %>% filter(nome %in% selTrait)
@@ -128,17 +128,19 @@ limiteBaixa <- -2 #Desvio entre -2 e 0 é media pressao
 # quality control
 qControl <- 0.1 #trashold
 
-# Contador de datapoints
-dataPointsTable<- count_fun(tableTraits,allData,"local") # arquivo parseCS.R
 
+# Contador de datapoints
+
+# Contando dados de 2022
 data2022a <- allData %>% filter(year %in% c(21), season == "SU")
 data2022b <- allData %>% filter(year %in% c(22))
 data2022 <- rbind(data2022a, data2022b)
 
 dataP2022 <- count_fun(tableTraits,data2022,"local") # arquivo parseCS.R
 knitr::kable(dataP2022)
+makePie(dataP2022, paste0("Dados 2022"))
 
-
+dataPointsTable <- count_fun(tableTraits,allData,"local")
 knitr::kable(dataPointsTable)
 makePie(dataPointsTable, paste0("PLC: 4,5,6"))
 
@@ -440,8 +442,8 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 
 
 require(gridExtra)
-selBUs <- c("22WN6BU07","22WN6BU09","22WN6BU22")
-selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Alta","Media")]
+# selBUs <- c("22WN6BU07","22WN6BU09","22WN6BU22")
+selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Alta")]
 myDF6 <- myDF %>% filter(BU %in% selBUs)
 # match("TRUE", str_detect(finalTabelaBU$Local,"BU35"))
 
