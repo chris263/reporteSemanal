@@ -46,7 +46,7 @@ saveChecks <- paste0("../output/checksLoc_",Sys.Date(),".xlsx")
 
 
 ## Carregando RData já processado
-load("../data/database_2022-07-02.RData")
+load("../data/database_2022-07-19.RData")
 
 
 ## Usar o formato csv para evitar problemas nos dados
@@ -114,9 +114,13 @@ myStag <- c(4,5,6) # Aqui seleciona o estagio
 removeBU <- c("22WN4BC33", "22WN5BC33","22WN6BC33",
               "22WN4BU35", "22WN5BU35","22WN6BU35")
 
+removeGenotipo <-c("MG580PWU", "NK505VIP3")
+
+
 `%!in%` <- Negate(`%in%`)
 allData_filter <- allData %>% filter(TPP %in% myTPP, BU %!in% removeBU )
 
+checksCS <- checksCS %>% filter(genotipo %!in% removeGenotipo | trait != "COSTR")
 
 #Analisar yiedl junto?
 duasT <- "no"
@@ -441,7 +445,7 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 
 require(gridExtra)
 selBUs <- c("22WN6BU07","22WN6BU09","22WN6BU22")
-selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Alta","Media")]
+#selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Alta","Media")]
 myDF6 <- myDF %>% filter(BU %in% selBUs)
 # match("TRUE", str_detect(finalTabelaBU$Local,"BU35"))
 
