@@ -46,12 +46,12 @@ saveChecks <- paste0("../output/checksLoc_",Sys.Date(),".xlsx")
 
 
 ## Carregando RData já processado
-load("../data/database_2022-07-19.RData")
-
+load("../data/database_2022-07-21.RData")
+# 
 
 ## Usar o formato csv para evitar problemas nos dados
 ## Inserir uma coluna em branco no csv
-# 
+
 # filenames <- list.files("../data", pattern=glob2rx("^TPP*.csv$"), full.names=TRUE)
 # print("Confirme os nomes dos arquivos lidos. Esta faltando algum?")
 # print(filenames)
@@ -61,29 +61,9 @@ load("../data/database_2022-07-19.RData")
 
 ## unique(allData$TPP)
 ## Carregando arquivos auxiliares de checks e sinonimos
-# checksCS <- readxl::read_xlsx("../data/renataMilho01072022.xlsx", sheet="Checks")
-# checksCS$Esperado <- as.numeric(checksCS$Esperado)
 # sinN <- readxl::read_xlsx("../data/renataMilho01072022.xlsx", sheet="Sinonimos")
-# sinN <- distinct(sinN, genotipo,Novo)
+# checksCS <- transCHEC(readxl::read_xlsx("../data/renataMilho01072022.xlsx", sheet="Checks"))
 
-# 
-# errorMessage=FALSE
-# 
-# tryCatch(tidyr::gather(checksCS,TPP,valor,7:10),
-#  error = function(e)
-#  errorMessage <<- TRUE)
-# 
-# if(errorMessage==T){
-#   checksCS <- checksCS %>% mutate(TPP09=1,
-#                                   TPP10=1,
-#                                   TPP11=1,
-#                                   TPP12=1)
-# 
-#   checksCS <- tidyr::gather(checksCS,TPP,valor,7:10)
-# }else{
-#   checksCS <- tidyr::gather(checksCS,TPP,valor,7:10)
-# }
-# 
 
 ## Corrigindo sinonimos
 # allData <- sinoFun(allData,sinN)
@@ -100,7 +80,6 @@ load("../data/database_2022-07-19.RData")
 
 ## Save multiple objects
 # save(allData, checksCS, tableTraits, file = paste0("../data/database_",Sys.Date(),".RData"))
-#  
 
 selTrait <- tableTraits$nome[1]
 filterTrait <- tableTraits %>% filter(nome %in% selTrait)
@@ -446,13 +425,8 @@ os graficos por local mostram as pressoes de doencas separando dois grupos, o pr
 
 
 require(gridExtra)
-<<<<<<< HEAD
-selBUs <- c("22WN6BU07","22WN6BU09","22WN6BU22")
-#selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Alta","Media")]
-=======
 # selBUs <- c("22WN6BU07","22WN6BU09","22WN6BU22")
 selBUs <- finalTabelaBU$Local[finalTabelaBU$classe %in% c("Alta")]
->>>>>>> master
 myDF6 <- myDF %>% filter(BU %in% selBUs)
 # match("TRUE", str_detect(finalTabelaBU$Local,"BU35"))
 
@@ -709,5 +683,6 @@ writexl::write_xlsx(dataMedia,nomeSalvar)
 writexl::write_xlsx(dataBU,nomeSalvarBU)
 
 ```
+
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

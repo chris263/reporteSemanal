@@ -118,11 +118,32 @@ read_fun <- function(inLista){
   posFinal$stg <- as.numeric(posFinal$stg)
 
   # finalData$Nota <- as.numeric(finalData$Nota)
+  posFinal <- posFinal %>% filter(is.na(Nota) == FALSE)
   posFinal <- distinct(posFinal, barcode, trait,rep,.keep_all = T)
 
 
   return(posFinal)
 
+}
+
+transCHEC <- function(inCHEC){
+  sinN <<- distinct(sinN, genotipo,Novo)
+  inCHEC$Esperado <- as.numeric(inCHEC$Esperado)
+  errorMessage=FALSE
+  tryCatch(tidyr::gather(inCHEC,TPP,valor,7:10),
+           error = function(e)
+             errorMessage <<- TRUE)
+
+  if(errorMessage==T){
+    inCHEC <- inCHEC %>% mutate(TPP09=1,
+                                    TPP10=1,
+                                    TPP11=1,
+                                    TPP12=1)
+
+    inCHEC <- tidyr::gather(inCHEC,TPP,valor,7:10)
+  }else{
+    inCHEC <- tidyr::gather(inCHEC,TPP,valor,7:10)
+  }
 }
 
 
