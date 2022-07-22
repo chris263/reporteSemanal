@@ -165,7 +165,7 @@ Aqui acontece ...
 
 # Na funcao abaixo usa yes para analisar um hibrido especifico
 # Usa-se `nao` para análise generica
-myDF <- dfFUN(allData_filter,"yes")
+myDF <- dfFUN(allData_filter,"no")
 myDF <- na.omit(myDF)
 
 # Preparando os checks
@@ -411,7 +411,9 @@ bluesBU <- BLUEs %>% filter(type=="BU") %>% dplyr::select(genotipo,local,TPP,blu
 genLoc <- left_join(bluesBU,finalTabelaBU,by=c("local"="Local"))
 genLoc <- genLoc %>% select(genotipo,local,TPP,blueN,classe,stage, Acuracia)
 
-writexl::write_xlsx(genLoc,paste0("../output/",myHB,"_genoLoc-",Sys.Date(),".xlsx"))
+if (exists("myHB")==T){
+  writexl::write_xlsx(genLoc,paste0("../output/",myHB,"_genoLoc-",Sys.Date(),".xlsx"))
+}
 
 
 ```
