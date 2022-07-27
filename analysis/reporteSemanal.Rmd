@@ -46,7 +46,7 @@ saveChecks <- paste0("../output/checksLoc_",Sys.Date(),".xlsx")
 
 
 ## Carregando RData já processado
-load("../data/database_2022-07-21.RData")
+load("../data/database_2022-07-27.RData")
 # 
 
 ## Usar o formato csv para evitar problemas nos dados
@@ -63,7 +63,7 @@ load("../data/database_2022-07-21.RData")
 ## Carregando arquivos auxiliares de checks e sinonimos
 # sinN <- readxl::read_xlsx("../data/renataMilho01072022.xlsx", sheet="Sinonimos")
 # checksCS <- transCHEC(readxl::read_xlsx("../data/renataMilho01072022.xlsx", sheet="Checks"))
-
+# 
 
 ## Corrigindo sinonimos
 # allData <- sinoFun(allData,sinN)
@@ -74,9 +74,9 @@ load("../data/database_2022-07-21.RData")
 # colnames(allData)[14] <- "Nota"
 
 # # Selecionando o trait que vamos trabalhar
-# tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR", "PRMDN"),
-# nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
-#        "bipolaris","ferrugem","diplodia","plantasMortas"))
+tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR", "PRMDN"),
+nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
+       "bipolaris","ferrugem","diplodia","plantasMortas"))
 
 ## Save multiple objects
 # save(allData, checksCS, tableTraits, file = paste0("../data/database_",Sys.Date(),".RData"))
@@ -165,7 +165,7 @@ Aqui acontece ...
 
 # Na funcao abaixo usa yes para analisar um hibrido especifico
 # Usa-se `nao` para análise generica
-myDF <- dfFUN(allData_filter,"no")
+myDF <- dfFUN(allData_filter,"yes")
 myDF <- na.omit(myDF)
 
 # Preparando os checks
