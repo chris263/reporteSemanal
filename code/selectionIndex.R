@@ -223,21 +223,18 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
 
 calc_blups <- function(inModel,cr){
 
-  # inModel <- modelo1
-  # cr <- "no"
+  # inModel <- modeloSommer
+  # cr <- "yes"
 
-  if(is.null(inModel$U$`u:genotipo`$cNota)){
-    inBlupNota <- as.data.frame(inModel$U$`u:genotipo`$blueN)
-  }else{
-    inBlupNota <- as.data.frame(inModel$U$`u:genotipo`$cNota)
-  }
+
+  inBlupNota <- as.data.frame(inModel$U$`u:genotipo`$COSTR)
 
   inBlupNota$genotipo <- rownames(inBlupNota)
   colnames(inBlupNota) <- c("fNota","genotipo")
   inBlupNota <- inBlupNota %>% arrange(genotipo)
 
   if(cr == "yes"){
-    inBlupYield <- as.data.frame(inModel$U$`u:genotipo`$cYield)
+    inBlupYield <- as.data.frame(inModel$U$`u:genotipo`$yieldGSM)
     inBlupYield$genotipo <- rownames(inBlupYield)
     colnames(inBlupYield) <- c("fYield","genotipo")
     inBlupYield <- inBlupYield %>% arrange(genotipo)
@@ -249,14 +246,14 @@ calc_blups <- function(inModel,cr){
   }
 }
 
-  defaultW <- getOption("warn")
-  options(warn = -1)
+defaultW <- getOption("warn")
+options(warn = -1)
 
-  efeitoNY <- function(effDF){
-    # effDF <- altaPP
-    aa <- as.numeric(effDF$Nota)
-    bb <- as.numeric(effDF$yield)
-    effDF <- altaP_DF
+efeitoNY <- function(effDF){
+  # effDF <- altaPP
+  aa <- as.numeric(effDF$Nota)
+  bb <- as.numeric(effDF$yield)
+  effDF <- altaP_DF
 
   lineaR <- lm(yield~Nota, data=effDF)
 

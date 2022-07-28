@@ -3,7 +3,9 @@ classLocations <- function(preAll, checks){
   # preAll <- preBLUEs_BU
   # checks <- checksF
 
-  # checksF$Esperado[checksF$genotipo=="K9606VIP3"] <- 5
+
+  # checks$Esperado[checks$genotipo=="K9606VIP3"] <- 5
+  # checks$Esperado[checks$genotipo=="DKB360PRO3"] <- 4
   # colnames(checks) <- c("genotipo","Check","Trait","Esperado","Tipo","TPP","valor" )
 
   phenoAll <- c()
@@ -24,13 +26,13 @@ classLocations <- function(preAll, checks){
 
   # Loop para separar por check
   for(i in 1:length(myCheck)){
-    # i=1
+    # i=2
     cat("Genotipo ", myCheck[i], i, "\n")
 
     checkPheno <- preAll %>% filter(genotipo == myCheck[i])
 
     if(nrow(checkPheno)>0){
-      notaCheck <- as.numeric(unique(checks %>% filter(genotipo == myCheck[i]) %>% dplyr::select(Esperado)))
+      notaCheck <- as.numeric(unique(checks %>% dplyr::filter(genotipo == myCheck[i]) %>% dplyr::select(Esperado)))
       checkPheno$Esperado <- notaCheck
       checkPheno$Check <- 1
       if(notaCheck < 3){
@@ -192,38 +194,39 @@ finalClass<- function(enterTable, qualC, limA, limB){
 }
 
 joint_sommer <- function(inBLUE,locP){
-  # inBLUE = altaPPBU
-  # locP = "yes"
+  # inBLUE <myDF
+  # locP <- selBUs
+
+  inBLUE <- myDF %>% filter(BU %in% locP)
+
+  in2 <- inBLUE %>% tidyr::spread(trait, Nota)
 
 
   library(sommer)
-  inBLUE$BUGeno <- paste0(inBLUE$BU,"_",inBLUE$genotipo)
-  inBLUE$Nota <- as.numeric(inBLUE$Nota)
+  in2$BUGeno <- paste0(in2$BU,"_",in2$genotipo)
+  # inBLUE$Nota <- as.numeric(inBLUE$Nota)
 
-  if(locP=="yes"){
-    modeloSommer <- mmer(Nota ~ BU,
-                           random= ~ vsr(genotipo, Gtc=unsm(1)) + vsr(BUGeno, Gtc=unsm(1)),
-                           rcov= ~ vsr(units, Gtc=unsm(1)),
-                           data=inBLUE, verbose = FALSE)
-  }else{
-    modeloConjunto <- mmer(Nota ~ 1,
-                           random= ~ vsr(genotipo, Gtc=unsm(1)) + vsr(localGeno, Gtc=unsm(1)),
-                           rcov= ~ vsr(units, Gtc=unsm(1)),
-                           # tolparinv = 1e100000,
-                           data=inBLUE, verbose = FALSE)
-  }
+  in3 <- in2 %>%filter(stg == 4)
+  makeG7(in3)
 
+  modeloSommer <- mmer(cbind(yieldGSM, COSTR) ~ local,
+                         random= ~ vsr(genotipo, Gtc=unsm(2)) + vsr(BUGeno, Gtc=unsm(2)),
+                         rcov= ~ vsr(units, Gtc=unsm(2)),
+                         # tolparinv = 1e30,
+                         data=in2, verbose = FALSE)
 
-  teste <- as.data.frame(modeloConjunto$U$`u:genotipo`$Nota)
-  testeS <- as.data.frame(modeloSommer$U$`u:genotipo`$Nota)
-  testeS$genotipo <- rownames(testeS)
+  pesos <- c(Yield=50, CS=50)
+  indexSel <- selectionIndex(modeloSommer,pesos)
+  finalBLUP <- calc_blups(modeloSommer,"yes")
 
-  # randef(modeloSommer)
-  # summary(modeloSommer)
-  #
-  # modeloSommer$U$`u:genotipo`
+  corrl <- cor(as.numeric(finalBLUP$fNota),as.numeric(finalBLUP$fYield))
+  cat("A correlacao e de: ", corrl)
+
+  # Arrumando indice para genotipos
+  genLoc # genotipos por local
 
   return(modeloConjunto)
+
 }
 
 joint_blup <- function(inData, locP){

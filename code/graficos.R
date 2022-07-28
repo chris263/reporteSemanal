@@ -185,14 +185,14 @@ makeG6 <- function(inGraph6){
 }
 
 makeG7 <- function(inGraph7){
-  inGraph7 <- altaPP
-  head(inGraph7)
+  # inGraph7 <- in2
+  # head(inGraph7)
 
   colnames(inGraph7)[3]<-"Nota"
   colnames(inGraph7)[4]<-"yield"
-  inGraph7 <-inGraph7 %>% filter(inGraph7$yield>2000)
+  inGraph7 <-inGraph7 %>% filter(inGraph7$yieldGSM>2000, inGraph7$COSTR > 2)
 
-  ggplot(inGraph7,aes(x=Nota,y=yield)) +
+  ggplot(inGraph7,aes(x=COSTR,y=yieldGSM)) +
     geom_point() +
     scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
     geom_smooth(method="lm")

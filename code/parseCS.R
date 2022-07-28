@@ -16,6 +16,7 @@ read_fun <- function(inLista){
                           SRSTR=NA,
                           DLLFR=NA,
                           PRMDN=NA,
+                          yieldGSM=NA,
                           range=NA,
                           row=NA,
                           BU=NA,
@@ -42,7 +43,7 @@ read_fun <- function(inLista){
     nomesCol <- colnames(readData)
     if(length(nomesCol)==1){ readData <- read.csv(file=inFile, header=T, as.is=1, sep=";")}
 
-    selNames <- c("TPP","EXTID","ABBRC","PLTID","REPNO","COSTR","HELMR","GRLSR","LFSPR","SCLBR","SRSTR","DLLFR","PRMDN","STRNG","STROW","PSS.BARCD")
+    selNames <- c("TPP","EXTID","ABBRC","PLTID","REPNO","COSTR","HELMR","GRLSR","LFSPR","SCLBR","SRSTR","DLLFR","PRMDN","PSS.YGSMN","STRNG","STROW","PSS.BARCD")
     checkNames <- match("TRUE",str_detect(nomesCol,paste(selNames[2:5],collapse = "|")))
     if(is.na(checkNames)==T){stop("Stop! Esta faltando umas das colunas principais, checar arquivo.")}
 
@@ -66,7 +67,7 @@ read_fun <- function(inLista){
     newData <- newData %>% select(all_of(selNames))
 
     colnames(newData) <- c("TPP","local","genotipo","plotID","rep","COSTR","HELMR",
-                           "GRLSR","LFSPR","SCLBR","SRSTR","DLLFR","PRMDN",
+                           "GRLSR","LFSPR","SCLBR","SRSTR","DLLFR","PRMDN","yieldGSM",
                            "range","row","barcode")
 
 
@@ -112,7 +113,7 @@ read_fun <- function(inLista){
   posFinal <- posFinal %>% filter(stg %in% c(4,5,6))
 
   posFinal <- posFinal[-1,]
-  posFinal <- tidyr::gather(posFinal, trait, Nota, COSTR:PRMDN)
+  posFinal <- tidyr::gather(posFinal, trait, Nota, COSTR:yieldGSM)
   posFinal$Nota <- as.numeric(posFinal$Nota)
   posFinal$year <- as.numeric(posFinal$year)
   posFinal$stg <- as.numeric(posFinal$stg)
@@ -121,6 +122,9 @@ read_fun <- function(inLista){
   posFinal <- posFinal %>% filter(is.na(Nota) == FALSE)
   posFinal <- distinct(posFinal, barcode, trait,rep,.keep_all = T)
 
+  colnames(posFinal)[1] <- "TPP"
+  colnames(posFinal)[8] <- "BU"
+  colnames(posFinal)[14] <- "Nota"
 
   return(posFinal)
 
@@ -186,6 +190,13 @@ sinoFun <- function(myData, sinIN){
     myData$genotipo <- replace(myData$genotipo, getPosition, myNew)
   }
   myData$genotipo <- gsub("\\_","\\\\", myData$genotipo)
+
+  if(ncol(myData) > ncol(checksCS)){
+    colnames(myData)[1] <- "TPP"
+    colnames(myData)[8] <- "BU"
+    colnames(myData)[14] <- "Nota"
+  }
+
   return(myData)
 }
 
@@ -296,13 +307,14 @@ dfFUN <- function( inData, crit){
 
   crit = tolower(crit)
   if(crit == "yes"){
-    outData <- inData %>% filter(trait %in% filterTrait$codigo[1], BU %in% locHy) %>%
+    outData <- inData %>% filter(trait %in% selTrait, BU %in% locHy) %>%
       select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
   }else{
     outData <- inData %>% filter(trait %in% filterTrait$codigo[1]) %>%
       select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
 
   }
+
   return(outData)
 
 }

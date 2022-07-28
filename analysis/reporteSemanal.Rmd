@@ -63,26 +63,25 @@ load("../data/database_2022-07-27.RData")
 ## Carregando arquivos auxiliares de checks e sinonimos
 # sinN <- readxl::read_xlsx("../data/renataMilho01072022.xlsx", sheet="Sinonimos")
 # checksCS <- transCHEC(readxl::read_xlsx("../data/renataMilho01072022.xlsx", sheet="Checks"))
-# 
+
 
 ## Corrigindo sinonimos
 # allData <- sinoFun(allData,sinN)
 # checksCS <- sinoFun(checksCS,sinN)
-# 
-# colnames(allData)[1] <- "TPP"
-# colnames(allData)[8] <- "BU"
-# colnames(allData)[14] <- "Nota"
+
 
 # # Selecionando o trait que vamos trabalhar
-tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR", "PRMDN"),
-nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
-       "bipolaris","ferrugem","diplodia","plantasMortas"))
+# tableTraits <- data.frame(codigo=c("COSTR","GRLSR","HELMR","LFSPR","SCLBR","SRSTR","DLLFR", "PRMDN"),
+# nome=c("cornStunt", "cercospora", "turcicum", "manchaBranca",
+#        "bipolaris","ferrugem","diplodia","plantasMortas"))
 
 ## Save multiple objects
 # save(allData, checksCS, tableTraits, file = paste0("../data/database_",Sys.Date(),".RData"))
 
-selTrait <- tableTraits$nome[1]
-filterTrait <- tableTraits %>% filter(nome %in% selTrait)
+
+
+selTrait <- c(tableTraits$codigo[1],"yieldGSM")
+filterTrait <- tableTraits %>% filter(codigo %in% selTrait)
 
 ## Filtrar por TPP
 myTPP <- c("TPP09","TPP10","TPP11","TPP12") # selecionar aqui as TPPs
@@ -94,7 +93,6 @@ removeBU <- c("22WN4BC33", "22WN5BC33","22WN6BC33",
               "22WN4BU35", "22WN5BU35","22WN6BU35")
 
 removeGenotipo <-c("MG580PWU", "NK505VIP3")
-
 
 `%!in%` <- Negate(`%in%`)
 allData_filter <- allData %>% filter(TPP %in% myTPP, BU %!in% removeBU )
@@ -168,6 +166,7 @@ Aqui acontece ...
 myDF <- dfFUN(allData_filter,"yes")
 myDF <- na.omit(myDF)
 
+ccc <- checksCS
 # Preparando os checks
 checksCS$trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$trait)
 colnames(checksCS)[7] <- "TPP"
@@ -242,6 +241,8 @@ Mostrando o número de entradas (plots) em cada local. Locais com menos de 30 pl
 dfLocal <- data.frame(local=NA,stage=NA)
 dfTrial <- data.frame(local=NA,stage=NA)
 
+teste <- myDF %>% tidyr::spread(trait, Nota)
+
 remove <- c()
 for(i in 1:length(myStag)){
   # i=1
@@ -313,11 +314,11 @@ resumoLocF <- data.frame(local=NA,H2N=NA,H2Y=NA,Acuracia=NA,TPP=NA,stage=NA, typ
 colnames(checksF)[1] <- "genotipo"
 
 for(i in 1:length(myStag)){
-  # i=1
+  # i=3
   posDfLocal <- dfLocal %>% filter(stage == myStag[i])
   posDfTrial <- dfTrial %>% filter(stage == myStag[i])
   
-  myDFB <- myDF %>% filter(stg %in% myStag[i])
+  myDFB <- myDF %>% filter(stg %in% myStag[i], trait %in% selTrait[1])
   
   preBLUEs_BU <- local_blup(posDfLocal$local,duasT, myDFB, "BU") #  arquivo selectionIndex.R
   resumoBU <- resumoLoc
