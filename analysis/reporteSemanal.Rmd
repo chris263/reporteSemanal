@@ -92,7 +92,7 @@ myStag <- c(4,5,6) # Aqui seleciona o estagio
 removeBU <- c("22WN4BC33", "22WN5BC33","22WN6BC33",
               "22WN4BU35", "22WN5BU35","22WN6BU35")
 
-removeGenotipo <-c("MG580PWU", "NK505VIP3")
+removeGenotipo <-c("MG580PWU", "NK505VIP3", "K9609VIP3")
 
 `%!in%` <- Negate(`%in%`)
 allData_filter <- allData %>% filter(TPP %in% myTPP, BU %!in% removeBU )
@@ -100,7 +100,7 @@ allData_filter <- allData %>% filter(TPP %in% myTPP, BU %!in% removeBU )
 checksCS <- checksCS %>% filter(genotipo %!in% removeGenotipo | trait != "COSTR")
 
 #Analisar yiedl junto?
-duasT <- "no"
+duasT <- "yes"
 
 #limites
 limiteAlta <- 0 #Desvio a partir de 0 passa a ser alta
@@ -156,6 +156,7 @@ dataPrint <- c(myHB, dataYear)
 makePie(tableCount, paste0(dataPrint, collapse = "-"))
 
 ```
+
 ## Controle de qualidade
 Aqui acontece ...
 
@@ -163,10 +164,9 @@ Aqui acontece ...
 
 # Na funcao abaixo usa yes para analisar um hibrido especifico
 # Usa-se `nao` para análise generica
-myDF <- dfFUN(allData_filter,"yes")
+myDF <- dfFUN(allData_filter,"no")
 myDF <- na.omit(myDF)
 
-ccc <- checksCS
 # Preparando os checks
 checksCS$trait <- gsub(filterTrait$codigo[1],filterTrait$nome[1],checksCS$trait)
 colnames(checksCS)[7] <- "TPP"
@@ -224,7 +224,7 @@ knitr::kable(checksFora)
 knitr::kable(contaChecks)
 
 # salvando os checks por trial e BU
-fileChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% select(local,BU,genotipo)
+fileChecks <- myDF %>% filter(genotipo %in% checksF$genotipo) %>% dplyr::select(local,BU,genotipo)
 fileChecks <- distinct(fileChecks,genotipo,local,.keep_all = T)
 
 writexl::write_xlsx(fileChecks,saveChecks)
@@ -318,7 +318,7 @@ for(i in 1:length(myStag)){
   posDfLocal <- dfLocal %>% filter(stage == myStag[i])
   posDfTrial <- dfTrial %>% filter(stage == myStag[i])
   
-  myDFB <- myDF %>% filter(stg %in% myStag[i], trait %in% selTrait[1])
+  myDFB <- myDF %>% filter(stg %in% myStag[i])
   
   preBLUEs_BU <- local_blup(posDfLocal$local,duasT, myDFB, "BU") #  arquivo selectionIndex.R
   resumoBU <- resumoLoc
@@ -451,6 +451,7 @@ for(i in 1:length(selBUs)){
 
 # locais
 Resumo dos locais
+
 ```{r tabelaLoc, echo=FALSE}
 
 # Escolhendo alguns locais especificos via análise grafica 

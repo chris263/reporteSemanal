@@ -194,8 +194,8 @@ finalClass<- function(enterTable, qualC, limA, limB){
 }
 
 joint_sommer <- function(inBLUE,locP){
-  # inBLUE <myDF
-  # locP <- selBUs
+  inBLUE <- myDF
+  locP <- selBUs
 
   inBLUE <- myDF %>% filter(BU %in% locP)
 

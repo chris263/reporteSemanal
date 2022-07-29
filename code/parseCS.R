@@ -303,16 +303,15 @@ count_fun <- function(inTable, inData, inType){
 
 dfFUN <- function( inData, crit){
   # inData = allData_filter
-  # crit = "Yes"
+  # crit = "no"
 
   crit = tolower(crit)
   if(crit == "yes"){
     outData <- inData %>% filter(trait %in% selTrait, BU %in% locHy) %>%
       select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
   }else{
-    outData <- inData %>% filter(trait %in% filterTrait$codigo[1]) %>%
-      select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
-
+    outData <- inData %>% filter(trait %in% selTrait) %>%
+      dplyr::select(BU,local,barcode,stg,genotipo,rep,trait,Nota,TPP, year, season)
   }
 
   return(outData)

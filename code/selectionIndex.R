@@ -30,23 +30,27 @@ cleaning_data <- function(inFile, crit){
 }
 
 local_blup <- function(inLocal, crt4, inDFF, inType){
-  # inLocal = posDfTrial$local
-  # crt4="no"
+  # inLocal = posDfLocal$local
+  # crt4="yes"
   # inDFF <- myDFB
-  # inType = "trial"
+  # inType = "BU"
 
-  inDFF$Nota <- as.numeric(inDFF$Nota)
   resumoLoc <- data.frame(local = c(1:length(inLocal)),H2N=rep(0,length(inLocal)),
                            H2Y=rep(0,length(inLocal)),Acuracia=rep(0,length(inLocal)),TPP=NA)
 
 
-  if(crt4 == "no"){resumoLoc[,-3]}
+  if(crt4 == "no"){
+    resumoLoc[,-3]
+  }
+
+  inDFF <- inDFF %>% tidyr::spread(trait, Nota)
+
   library(lme4)
   BLUEf <- c()
 
 
   for(i in 1:length(inLocal)){
-    # i=4
+    # i=1
     # print(i)
     BLUPN <- c()
     BLUEY <- c()
@@ -57,24 +61,18 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
       selectedLoc <- inDFF%>%filter(local==inLocal[i])
     }
 
-    selectedLoc$Nota <- as.numeric(selectedLoc$Nota)
-
-    testeNota <- sum(selectedLoc$Nota, na.rm = T)
+    selectedLoc$COSTR <- as.numeric(selectedLoc$COSTR)
+    testeNota <- sum(selectedLoc$COSTR, na.rm = T)
 
     if(testeNota == 0 | is.na(testeNota) == T){cat("Local", i," ", inLocal[i], "sem notas.\n");next}
     # selectedLoc <- myDF%>%filter(local=="21WNBPEYG6J1BT122021")
 
-    testeY <- sum(selectedLoc$yield)
+    testeY <- sum(selectedLoc$yieldGSM)
 
     if (is.na(testeY) == TRUE | testeY == 0){
-      crt5 = "no"
+      crt4 = "no"
       # cat("Aqui ok ", i, "\n")
-    }else{
-      crt5 = "yes"
-      # cat(crt5, i, "\n")
-      }
-
-
+    }
 
     # selectedLoc <- selectedLoc %>% filter(genotipo %in% genFora$Nomes)
     nReps <- max(as.numeric(selectedLoc$rep))
@@ -83,7 +81,7 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
     if(testeRep == T){ selectedLoc$Rep <- 1}
 
     # colnames(selectedLoc)[4]<-"Nota"
-    testeVAR <- var(selectedLoc$Nota, na.rm=T)
+    testeVAR <- var(selectedLoc$COSTR, na.rm=T)
     checkVar <- is.na(testeVAR)
     if(checkVar==T){next}
 
@@ -104,9 +102,9 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
 
       selectedLoc$rep <- as.factor(selectedLoc$rep)
       if(length(unique(selectedLoc$rep)) == 1){
-        try(modeloLocalN <- lmer(Nota~1+(1|genotipo), data=selectedLoc), silent = T)
+        try(modeloLocalN <- lmer(COSTR~1+(1|genotipo), data=selectedLoc), silent = T)
       }else{
-        try(modeloLocalN <- lmer(Nota~rep+(1|genotipo), data=selectedLoc), silent=T)
+        try(modeloLocalN <- lmer(COSTR~rep+(1|genotipo), data=selectedLoc), silent=T)
       }
       errorCheck <- exists("modeloLocalN")
       if(errorCheck == F){ next }
@@ -127,18 +125,18 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
       }
 
 
-      if(crt5 == "yes"){
-        selectedLoc$yield <- as.numeric(selectedLoc$yield)
-        selectedY <- selectedLoc %>% filter(yield>0)
+      if(crt4 == "yes"){
 
+        selectedLoc$yieldGSM <- as.numeric(selectedLoc$yieldGSM)
+        selectedY <- selectedLoc %>% filter(yieldGSM > 0)
 
-        if(testeY>0){
-          try(modeloLocalY <- lmer(yield~Rep+(1|genotipo), data=selectedLoc))
+        if(testeY > 0){
+          try(modeloLocalY <- lmer(yieldGSM ~ rep + (1|genotipo), data=selectedLoc))
           teste2<-exists("modeloLocaly")
-          if(teste2==F){
-            cat("Sem analise de yield...","\n")
-            next
-          }
+          # if(teste2==F){
+          #   cat("Sem analise de yield...","\n")
+          #   next
+          # }
           varianceY = as.data.frame(VarCorr(modeloLocalY))
           gvarY = varianceY [1,"vcov"]
           resvarY = varianceY [2, "vcov"]
@@ -163,7 +161,6 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
 
         }else{ # caso não tenha yield
           H2Y = H2
-
           adjY = coef(modeloLocalN)$genotipo
           adjY[1] = NA
           adjY = cbind(adjY[1], inLocal[i],rownames(adjY))
@@ -189,7 +186,7 @@ local_blup <- function(inLocal, crt4, inDFF, inType){
       BLUPN$TPP <- unique(selectedLoc$TPP)
       BLUPN <- BLUPN %>% dplyr::select(genotipo,local,blueN,TPP)
     }
-    if(crt5 == "yes"){
+    if(crt4 == "yes"){
       preBLUE <- left_join(BLUPN, BLUEY, by=c("genotipo"="genotipo")) %>% dplyr::select(genotipo,local.x,blueN,blueY,TPP)
       colnames(preBLUE) <- c("genotipo", "local", "blueN","blueY","TPP")
       BLUEf <- rbind(BLUEf,preBLUE)
